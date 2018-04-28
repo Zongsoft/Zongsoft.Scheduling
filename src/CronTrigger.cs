@@ -47,7 +47,7 @@ namespace Zongsoft.Scheduling
 			if(string.IsNullOrWhiteSpace(expression))
 				throw new ArgumentNullException(nameof(expression));
 
-			_expression = Cronos.CronExpression.Parse(expression);
+			_expression = Cronos.CronExpression.Parse(expression, Cronos.CronFormat.IncludeSeconds);
 			this.Expression = _expression.ToString();
 		}
 		#endregion
@@ -67,12 +67,12 @@ namespace Zongsoft.Scheduling
 
 		public DateTime? GetNextOccurrence(bool inclusive = false)
 		{
-			return _expression.GetNextOccurrence(DateTime.UtcNow, inclusive);
+			return _expression.GetNextOccurrence(Utility.Now(), inclusive);
 		}
 
 		public DateTime? GetNextOccurrence(DateTime origin, bool inclusive = false)
 		{
-			return _expression.GetNextOccurrence(origin, inclusive);
+			return _expression.GetNextOccurrence(Utility.Now(origin), inclusive);
 		}
 		#endregion
 	}

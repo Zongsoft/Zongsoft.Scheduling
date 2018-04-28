@@ -34,46 +34,14 @@
 using System;
 using System.Collections.Generic;
 
-using Zongsoft.Common;
-using Zongsoft.Services;
-
 namespace Zongsoft.Scheduling
 {
-	public interface IScheduler : IWorker
+	internal static class Utility
 	{
-		IEnumerable<ITrigger> Triggers
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+		internal static DateTime Now(DateTime? timestamp = null)
 		{
-			get;
+			return new DateTime(timestamp.HasValue ? timestamp.Value.Ticks : DateTime.Now.Ticks, DateTimeKind.Utc);
 		}
-
-		IEnumerable<IHandler> Handlers
-		{
-			get;
-		}
-
-		IDictionary<string, object> States
-		{
-			get;
-		}
-
-		DateTime? NextOccurrence
-		{
-			get;
-		}
-
-		ITrigger GetTrigger(object parameter);
-		IEnumerable<ITrigger> GetTriggers(object parameter);
-
-		IHandler GetHandler(string name);
-		IEnumerable<IHandler> GetHandlers(ITrigger trigger);
-
-		void Schedule(ITrigger trigger, IHandler handler);
-		void Schedule(ITrigger trigger, IHandler handler, Action<IHandlerContext> onTrigger);
-
-		void Reschedule(IHandler handler, ITrigger trigger);
-
-		void Unschedule();
-		bool Unschedule(IHandler handler);
-		bool Unschedule(ITrigger trigger);
 	}
 }

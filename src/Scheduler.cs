@@ -45,20 +45,19 @@ namespace Zongsoft.Scheduling
 	public class Scheduler : WorkerBase, IScheduler
 	{
 		#region 成员字段
-		private int _requireScan = 0;
-		private int _version = 0;
 		private long _nextTick = 0;
+		private CancellationTokenSource _cancellation;
 
-		private DateTime? _nextTimestamp;
 		private ConcurrentDictionary<ITrigger, ISet<IHandler>> _schedules;
 		private ConcurrentDictionary<string, IHandler> _handlers;
-		private ConcurrentQueue<ScheduleToken> _queue;
 		private IDictionary<string, object> _states;
 		#endregion
 
 		#region 构造函数
 		public Scheduler()
 		{
+			this.CanPauseAndContinue = true;
+
 			_handlers = new ConcurrentDictionary<string, IHandler>();
 			_schedules = new ConcurrentDictionary<ITrigger, ISet<IHandler>>();
 			_states = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
@@ -153,35 +152,22 @@ namespace Zongsoft.Scheduling
 			if(handler == null)
 				throw new ArgumentNullException(nameof(handler));
 
-			var isScan = false;
-
-			if(_schedules.IsEmpty)
-			{
-				var original = Interlocked.CompareExchange(ref _requireScan, 1, 0);
-
-				if(original == 0)
-					isScan = true;
-			}
-
 			//获取指定触发器关联的执行处理器集合
 			var handlers = _schedules.GetOrAdd(trigger, key => new HashSet<IHandler>());
 
 			//将指定的执行处理器加入到对应的触发器的执行集合中
-			if(handlers.Add(handler) && !isScan)
+			//如果加入成功并且当前状态为运行中则有可能需要手动激发，
+			//如果当前状态不是运行中，则无需手动激发，可由OnStart或OnResume来触发
+			if(handlers.Add(handler) && this.State == WorkerState.Running)
 			{
 				var next = trigger.GetNextOccurrence();
 
-				if(next.HasValue && next.Value.Ticks <= _nextTick)
+				if(next.HasValue && (_nextTick == 0 || next.Value.Ticks <= _nextTick))
 				{
-					var original = Interlocked.Exchange(ref _nextTick, next.Value.Ticks);
-					var version = Interlocked.Increment(ref _version);
-
-					this.Fire(next.Value - DateTime.Now, new ScheduleToken[] { new ScheduleToken(trigger, handlers) }, version);
+					if(this.SetNext(next.Value))
+						this.Fire(next.Value - Utility.Now(), new ScheduleToken[] { new ScheduleToken(trigger, handlers) });
 				}
 			}
-
-			if(isScan)
-				this.Scan();
 		}
 
 		public void Schedule(ITrigger trigger, IHandler handler, Action<IHandlerContext> onTrigger)
@@ -192,6 +178,12 @@ namespace Zongsoft.Scheduling
 		public void Reschedule(IHandler handler, ITrigger trigger)
 		{
 			throw new NotImplementedException();
+		}
+
+		public void Unschedule()
+		{
+			_schedules.Clear();
+			_handlers.Clear();
 		}
 
 		public bool Unschedule(IHandler handler)
@@ -233,7 +225,18 @@ namespace Zongsoft.Scheduling
 
 		protected override void OnStop(string[] args)
 		{
-			Interlocked.Increment(ref _version);
+			var cancellation = _cancellation;
+
+			if(cancellation != null)
+				cancellation.Cancel();
+		}
+
+		protected override void OnPause()
+		{
+			var cancellation = _cancellation;
+
+			if(cancellation != null)
+				cancellation.Cancel();
 		}
 
 		protected override void OnResume()
@@ -243,17 +246,17 @@ namespace Zongsoft.Scheduling
 
 		#region 私有方法
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.Synchronized)]
-		private bool SetNext(DateTime timestamp, ScheduleToken token)
+		private bool SetNext(DateTime timestamp)
 		{
 			var nextTick = _nextTick;
 
-			if(timestamp.Ticks < nextTick)
-				Interlocked.CompareExchange(ref _nextTick, timestamp.Ticks, nextTick);
+			if(nextTick == 0 || timestamp.Ticks < nextTick)
+			{
+				_nextTick = timestamp.Ticks;
+				return true;
+			}
 
-			if(_queue != null)
-				_queue.Enqueue(token);
-
-			return timestamp.Ticks <= nextTick;
+			return false;
 		}
 
 		private void Scan()
@@ -266,9 +269,9 @@ namespace Zongsoft.Scheduling
 
 			foreach(var schedule in _schedules)
 			{
-				var timestamp = schedule.Key.GetNextOccurrence(DateTime.Now);
+				var timestamp = schedule.Key.GetNextOccurrence();
 
-				if(timestamp.HasValue && timestamp.Value <= next)
+				if(timestamp.HasValue && (next == null || timestamp.Value <= next))
 				{
 					if(timestamp.Value < next)
 						schedules.Clear();
@@ -278,54 +281,46 @@ namespace Zongsoft.Scheduling
 				}
 			}
 
-			_nextTimestamp = next;
-
 			if(next.HasValue)
 			{
 				_nextTick = next.Value.Ticks;
-				this.Fire(next.Value - DateTime.Now, schedules, _version);
+				this.Fire(next.Value - Utility.Now(), schedules);
 			}
 		}
 
-		private void Fire(TimeSpan delay, IEnumerable<ScheduleToken> schedules, int version)
+		private void Fire(TimeSpan delay, IEnumerable<ScheduleToken> schedules)
 		{
 			if(schedules == null)
 				return;
 
+			var original = Interlocked.Exchange(ref _cancellation, new CancellationTokenSource());
+
+			if(original != null)
+			{
+				original.Cancel();
+				original.Dispose();
+			}
+
 			Task.Delay(delay).ContinueWith((task, state) =>
 			{
-				var token = (TriggerToken)state;
-				var original = Interlocked.CompareExchange(ref _version, 0, token.Version);
-
-				if(original != token.Version)
-					return;
-
 				this.Scan();
 
-				foreach(var schedule in token.Schedules)
+				foreach(var schedule in (IEnumerable<ScheduleToken>)state)
 				{
 					foreach(var handler in schedule.Handlers)
 					{
-						handler.OnHandle(new HandlerContext(this, schedule.Trigger));
+						try
+						{
+							handler.OnHandle(new HandlerContext(this, schedule.Trigger));
+						}
+						catch { }
 					}
 				}
-			}, new TriggerToken(version, schedules));
+			}, schedules, _cancellation.Token);
 		}
 		#endregion
 
 		#region 嵌套子类
-		private struct TriggerToken
-		{
-			public int Version;
-			public IEnumerable<ScheduleToken> Schedules;
-
-			public TriggerToken(int version, IEnumerable<ScheduleToken> schedules)
-			{
-				this.Version = version;
-				this.Schedules = schedules;
-			}
-		}
-
 		private struct ScheduleToken
 		{
 			public ITrigger Trigger;
