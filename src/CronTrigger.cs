@@ -32,10 +32,11 @@
  */
 
 using System;
+using System.Collections.Concurrent;
 
 namespace Zongsoft.Scheduling
 {
-	public class CronTrigger : ITrigger
+	public class CronTrigger : ITrigger, IEquatable<ITrigger>
 	{
 		#region 成员字段
 		private Cronos.CronExpression _expression;

@@ -38,11 +38,6 @@ namespace Zongsoft.Scheduling
 {
 	public interface IHandler : IEquatable<IHandler>
 	{
-		string Name
-		{
-			get;
-		}
-
-		void OnHandle(IHandlerContext context);
+		void Handle(IHandlerContext context);
 	}
 }

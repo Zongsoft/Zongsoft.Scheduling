@@ -37,6 +37,11 @@ namespace Zongsoft.Scheduling
 {
     public interface ITrigger : IEquatable<ITrigger>
     {
+		string Expression
+		{
+			get;
+		}
+
 		DateTime? GetNextOccurrence(bool inclusive = false);
 		DateTime? GetNextOccurrence(DateTime origin, bool inclusive = false);
 	}

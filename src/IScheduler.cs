@@ -41,6 +41,7 @@ namespace Zongsoft.Scheduling
 {
 	public interface IScheduler : IWorker
 	{
+		#region 属性声明
 		IEnumerable<ITrigger> Triggers
 		{
 			get;
@@ -60,15 +61,15 @@ namespace Zongsoft.Scheduling
 		{
 			get;
 		}
+		#endregion
 
-		ITrigger GetTrigger(object parameter);
-		IEnumerable<ITrigger> GetTriggers(object parameter);
+		ITrigger GetTrigger(string expression);
+		IEnumerable<ITrigger> GetTriggers(string expression);
 
-		IHandler GetHandler(string name);
 		IEnumerable<IHandler> GetHandlers(ITrigger trigger);
 
-		void Schedule(ITrigger trigger, IHandler handler);
-		void Schedule(ITrigger trigger, IHandler handler, Action<IHandlerContext> onTrigger);
+		bool Schedule(ITrigger trigger, IHandler handler);
+		bool Schedule(ITrigger trigger, IHandler handler, Action<IHandlerContext> onTrigger);
 
 		void Reschedule(IHandler handler, ITrigger trigger);
 

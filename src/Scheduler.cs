@@ -48,8 +48,9 @@ namespace Zongsoft.Scheduling
 		private long _nextTick = 0;
 		private CancellationTokenSource _cancellation;
 
+		//private ConcurrentDictionary<IHandler, ITrigger> _pendings;
 		private ConcurrentDictionary<ITrigger, ISet<IHandler>> _schedules;
-		private ConcurrentDictionary<string, IHandler> _handlers;
+		private HashSet<IHandler> _handlers;
 		private IDictionary<string, object> _states;
 		#endregion
 
@@ -58,8 +59,8 @@ namespace Zongsoft.Scheduling
 		{
 			this.CanPauseAndContinue = true;
 
-			_handlers = new ConcurrentDictionary<string, IHandler>();
-			_schedules = new ConcurrentDictionary<ITrigger, ISet<IHandler>>();
+			_handlers = new HashSet<IHandler>();
+			_schedules = new ConcurrentDictionary<ITrigger, ISet<IHandler>>(TriggerComparer.Instance);
 			_states = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 		}
 		#endregion
@@ -92,7 +93,7 @@ namespace Zongsoft.Scheduling
 		{
 			get
 			{
-				foreach(var handler in _handlers.Values)
+				foreach(var handler in _handlers)
 					yield return handler;
 			}
 		}
@@ -105,32 +106,24 @@ namespace Zongsoft.Scheduling
 			}
 		}
 
-		public ITrigger GetTrigger(object parameter)
+		public ITrigger GetTrigger(string expression)
 		{
 			foreach(var trigger in _schedules.Keys)
 			{
-				if(trigger is IMatchable matchable && matchable.IsMatch(parameter))
+				if(trigger is IMatchable matchable && matchable.IsMatch(expression))
 					return trigger;
 			}
 
 			return null;
 		}
 
-		public IEnumerable<ITrigger> GetTriggers(object parameter)
+		public IEnumerable<ITrigger> GetTriggers(string expression)
 		{
 			foreach(var trigger in _schedules.Keys)
 			{
-				if(trigger is IMatchable matchable && matchable.IsMatch(parameter))
+				if(trigger is IMatchable matchable && matchable.IsMatch(expression))
 					yield return trigger;
 			}
-		}
-
-		public IHandler GetHandler(string name)
-		{
-			if(name != null && _handlers.TryGetValue(name, out var handler))
-				return handler;
-
-			return null;
 		}
 
 		public IEnumerable<IHandler> GetHandlers(ITrigger trigger)
@@ -145,43 +138,65 @@ namespace Zongsoft.Scheduling
 			}
 		}
 
-		public void Schedule(ITrigger trigger, IHandler handler)
+		public bool Schedule(ITrigger trigger, IHandler handler)
 		{
 			if(trigger == null)
 				throw new ArgumentNullException(nameof(trigger));
 			if(handler == null)
 				throw new ArgumentNullException(nameof(handler));
 
+			//首先将处理器加入到处理器集中
+			_handlers.Add(handler);
+
 			//获取指定触发器关联的执行处理器集合
 			var handlers = _schedules.GetOrAdd(trigger, key => new HashSet<IHandler>());
 
-			//将指定的执行处理器加入到对应的触发器的执行集合中
-			//如果加入成功并且当前状态为运行中则有可能需要手动激发，
-			//如果当前状态不是运行中，则无需手动激发，可由OnStart或OnResume来触发
-			if(handlers.Add(handler) && this.State == WorkerState.Running)
+			//将指定的执行处理器加入到对应的触发器的执行集合中，如果加入成功则尝试重新激发
+			if(handlers.Add(handler))
 			{
-				var next = trigger.GetNextOccurrence();
-
-				if(next.HasValue && (_nextTick == 0 || next.Value.Ticks <= _nextTick))
-				{
-					if(this.SetNext(next.Value))
-						this.Fire(next.Value - Utility.Now(), new ScheduleToken[] { new ScheduleToken(trigger, handlers) });
-				}
+				this.TryFire(trigger, handlers);
+				return true;
 			}
+
+			return false;
 		}
 
-		public void Schedule(ITrigger trigger, IHandler handler, Action<IHandlerContext> onTrigger)
+		public bool Schedule(ITrigger trigger, IHandler handler, Action<IHandlerContext> onTrigger)
 		{
 			throw new NotImplementedException();
 		}
 
 		public void Reschedule(IHandler handler, ITrigger trigger)
 		{
-			throw new NotImplementedException();
+			if(handler == null)
+				throw new ArgumentNullException(nameof(handler));
+			if(trigger == null)
+				throw new ArgumentNullException(nameof(trigger));
+
+			if(!_handlers.Contains(handler))
+			{
+				this.Schedule(trigger, handler);
+				return;
+			}
+
+			foreach(var schedule in _schedules)
+			{
+				if(schedule.Key.Equals(trigger))
+					schedule.Value.Add(handler);
+				else
+					schedule.Value.Remove(handler);
+			}
+
+			this.TryFire(trigger, new[] { handler });
 		}
 
 		public void Unschedule()
 		{
+			var cancellation = _cancellation;
+
+			if(cancellation != null)
+				cancellation.Cancel();
+
 			_schedules.Clear();
 			_handlers.Clear();
 		}
@@ -191,7 +206,7 @@ namespace Zongsoft.Scheduling
 			if(handler == null)
 				return false;
 
-			if(_handlers.TryRemove(handler.Name, out var _))
+			if(_handlers.Remove(handler))
 			{
 				foreach(var handlers in _schedules.Values)
 				{
@@ -218,6 +233,7 @@ namespace Zongsoft.Scheduling
 			return false;
 		}
 
+		#region 重写方法
 		protected override void OnStart(string[] args)
 		{
 			this.Scan();
@@ -243,6 +259,7 @@ namespace Zongsoft.Scheduling
 		{
 			this.Scan();
 		}
+		#endregion
 
 		#region 私有方法
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.Synchronized)]
@@ -257,6 +274,20 @@ namespace Zongsoft.Scheduling
 			}
 
 			return false;
+		}
+
+		private void TryFire(ITrigger trigger, IEnumerable<IHandler> handlers)
+		{
+			if(this.State != WorkerState.Running)
+				return;
+
+			var next = trigger.GetNextOccurrence();
+
+			if(next.HasValue && (_nextTick == 0 || next.Value.Ticks <= _nextTick))
+			{
+				if(this.SetNext(next.Value))
+					this.Fire(next.Value - Utility.Now(), new ScheduleToken[] { new ScheduleToken(trigger, handlers) });
+			}
 		}
 
 		private void Scan()
@@ -311,7 +342,7 @@ namespace Zongsoft.Scheduling
 					{
 						try
 						{
-							handler.OnHandle(new HandlerContext(this, schedule.Trigger));
+							handler.Handle(new HandlerContext(this, schedule.Trigger));
 						}
 						catch { }
 					}
@@ -337,6 +368,38 @@ namespace Zongsoft.Scheduling
 				this.Trigger = pair.Key;
 				this.Handlers = pair.Value;
 			}
+		}
+
+		public class TriggerComparer : IEqualityComparer<ITrigger>
+		{
+			#region 单例字段
+			public static readonly TriggerComparer Instance = new TriggerComparer();
+			#endregion
+
+			#region 私有构造
+			private TriggerComparer()
+			{
+			}
+			#endregion
+
+			#region 公共方法
+			public bool Equals(ITrigger x, ITrigger y)
+			{
+				if(x == null || y == null)
+					return false;
+
+				return x.GetType() == y.GetType() &&
+				       string.Equals(x.Expression, y.Expression, StringComparison.OrdinalIgnoreCase);
+			}
+
+			public int GetHashCode(ITrigger obj)
+			{
+				if(obj == null || string.IsNullOrWhiteSpace(obj.Expression))
+					return 0;
+
+				return (obj.GetType().FullName + ":" + obj.Expression.ToUpperInvariant()).GetHashCode();
+			}
+			#endregion
 		}
 		#endregion
 	}
