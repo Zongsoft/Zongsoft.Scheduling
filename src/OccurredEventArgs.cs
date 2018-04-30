@@ -32,65 +32,30 @@
  */
 
 using System;
-using System.Collections.Concurrent;
+using System.Collections.Generic;
 
 namespace Zongsoft.Scheduling
 {
-	public class CronTrigger : ITrigger, IEquatable<ITrigger>
+	public class OccurredEventArgs : EventArgs
 	{
 		#region 成员字段
-		private Cronos.CronExpression _expression;
+		private int _count;
 		#endregion
 
 		#region 构造函数
-		internal CronTrigger(string expression)
+		public OccurredEventArgs(int count)
 		{
-			if(string.IsNullOrWhiteSpace(expression))
-				throw new ArgumentNullException(nameof(expression));
-
-			_expression = Cronos.CronExpression.Parse(expression, Cronos.CronFormat.IncludeSeconds);
-			this.Expression = _expression.ToString();
+			_count = count;
 		}
 		#endregion
 
 		#region 公共属性
-		public string Expression
+		public int Count
 		{
-			get;
-		}
-		#endregion
-
-		#region 公共方法
-		public DateTime? GetNextOccurrence(bool inclusive = false)
-		{
-			return _expression.GetNextOccurrence(Utility.Now(), inclusive);
-		}
-
-		public DateTime? GetNextOccurrence(DateTime origin, bool inclusive = false)
-		{
-			return _expression.GetNextOccurrence(Utility.Now(origin), inclusive);
-		}
-		#endregion
-
-		#region 重写方法
-		public bool Equals(ITrigger other)
-		{
-			return (other is CronTrigger cron) && cron._expression.Equals(_expression);
-		}
-
-		public override bool Equals(object obj)
-		{
-			return base.Equals(obj as CronTrigger);
-		}
-
-		public override int GetHashCode()
-		{
-			return _expression.GetHashCode();
-		}
-
-		public override string ToString()
-		{
-			return "Cron: " + _expression.ToString();
+			get
+			{
+				return _count;
+			}
 		}
 		#endregion
 	}

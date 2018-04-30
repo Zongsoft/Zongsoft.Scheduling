@@ -34,14 +34,27 @@
 using System;
 using System.Collections.Generic;
 
-using Zongsoft.Common;
-using Zongsoft.Services;
-
 namespace Zongsoft.Scheduling
 {
-	public interface IScheduler : IWorker
+	public interface IScheduler : Zongsoft.Services.IWorker
 	{
+		#region 事件声明
+		event EventHandler<HandledEventArgs> Handled;
+		event EventHandler<OccurredEventArgs> Occurred;
+		event EventHandler<ScheduledEventArgs> Scheduled;
+		#endregion
+
 		#region 属性声明
+		DateTime? LastTime
+		{
+			get;
+		}
+
+		DateTime? NextTime
+		{
+			get;
+		}
+
 		IEnumerable<ITrigger> Triggers
 		{
 			get;
@@ -52,29 +65,26 @@ namespace Zongsoft.Scheduling
 			get;
 		}
 
-		IDictionary<string, object> States
+		bool HasStates
 		{
 			get;
 		}
 
-		DateTime? NextOccurrence
+		IDictionary<string, object> States
 		{
 			get;
 		}
 		#endregion
 
-		ITrigger GetTrigger(string expression);
-		IEnumerable<ITrigger> GetTriggers(string expression);
-
+		#region 方法声明
 		IEnumerable<IHandler> GetHandlers(ITrigger trigger);
 
-		bool Schedule(ITrigger trigger, IHandler handler);
-		bool Schedule(ITrigger trigger, IHandler handler, Action<IHandlerContext> onTrigger);
-
+		bool Schedule(IHandler handler, ITrigger trigger);
 		void Reschedule(IHandler handler, ITrigger trigger);
 
 		void Unschedule();
 		bool Unschedule(IHandler handler);
 		bool Unschedule(ITrigger trigger);
+		#endregion
 	}
 }

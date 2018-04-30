@@ -38,6 +38,11 @@ namespace Zongsoft.Scheduling
 {
 	public interface IHandlerContext
 	{
+		int Index
+		{
+			get;
+		}
+
 		IScheduler Scheduler
 		{
 			get;

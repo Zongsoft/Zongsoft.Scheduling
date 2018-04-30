@@ -32,6 +32,7 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Collections.Concurrent;
 
 namespace Zongsoft.Scheduling
@@ -39,6 +40,7 @@ namespace Zongsoft.Scheduling
 	public sealed class Trigger
 	{
 		#region 静态字段
+		private static readonly IDictionary<string, ITriggerBuilder> _builders = new Dictionary<string, ITriggerBuilder>(StringComparer.OrdinalIgnoreCase);
 		private static readonly ConcurrentDictionary<string, ITrigger> _cache = new ConcurrentDictionary<string, ITrigger>(StringComparer.OrdinalIgnoreCase);
 		#endregion
 
@@ -55,6 +57,25 @@ namespace Zongsoft.Scheduling
 				return null;
 
 			return _cache.GetOrAdd(expression.Trim(), cron => new CronTrigger(cron));
+		}
+
+		public static ITrigger Get(string scheme, string expression)
+		{
+			if(string.IsNullOrWhiteSpace(scheme))
+				throw new ArgumentNullException(nameof(scheme));
+
+			return _cache.GetOrAdd(GetCacheKey(scheme, expression), key =>
+			{
+				if(_builders.TryGetValue(scheme, out var builder))
+					return builder.Build(expression);
+
+				throw new InvalidProgramException($"The '{scheme}' trigger builder not found.");
+			});
+		}
+
+		private static string GetCacheKey(string scheme, string expression)
+		{
+			return scheme.Trim() + ":" + expression;
 		}
 		#endregion
 	}
