@@ -42,12 +42,9 @@ namespace Zongsoft.Scheduling
 		private Cronos.CronExpression _expression;
 		#endregion
 
-		#region 构造函数
-		internal CronTrigger(string expression)
+		#region 私有构造
+		private CronTrigger(string expression)
 		{
-			if(string.IsNullOrEmpty(expression))
-				throw new ArgumentNullException(nameof(expression));
-
 			_expression = Cronos.CronExpression.Parse(expression, Cronos.CronFormat.IncludeSeconds);
 			this.Expression = _expression.ToString();
 		}
