@@ -57,6 +57,7 @@ namespace Zongsoft.Scheduling
 		private ConcurrentDictionary<ITrigger, ScheduleToken> _schedules;
 		private HashSet<IHandler> _handlers;
 		private IDictionary<string, object> _states;
+		private IRetriever _retriever;
 		#endregion
 
 		#region 构造函数
@@ -66,6 +67,8 @@ namespace Zongsoft.Scheduling
 
 			_handlers = new HashSet<IHandler>();
 			_schedules = new ConcurrentDictionary<ITrigger, ScheduleToken>(TriggerComparer.Instance);
+			_retriever = new Retriever();
+			_retriever.Succeed += Retriever_Retried;
 		}
 		#endregion
 
@@ -93,6 +96,29 @@ namespace Zongsoft.Scheduling
 					return null;
 
 				return new DateTime(recently);
+			}
+		}
+
+		public IRetriever Retriever
+		{
+			get
+			{
+				return _retriever;
+			}
+			set
+			{
+				if(value == null)
+					throw new ArgumentNullException();
+
+				if(object.ReferenceEquals(_retriever, value))
+					return;
+
+				var original = Interlocked.Exchange(ref _retriever, value);
+
+				if(original != null)
+					original.Succeed -= Retriever_Retried;
+
+				_retriever.Succeed += Retriever_Retried;
 			}
 		}
 
@@ -241,7 +267,11 @@ namespace Zongsoft.Scheduling
 		#region 重写方法
 		protected override void OnStart(string[] args)
 		{
+			//扫描调度集
 			this.Scan();
+
+			//启动失败重试队列
+			_retriever.Run();
 		}
 
 		protected override void OnStop(string[] args)
@@ -250,6 +280,9 @@ namespace Zongsoft.Scheduling
 
 			if(cancellation != null)
 				cancellation.Cancel();
+
+			//停止失败重试队列并清空所有待重试项
+			_retriever.Stop(true);
 		}
 
 		protected override void OnPause()
@@ -258,11 +291,18 @@ namespace Zongsoft.Scheduling
 
 			if(cancellation != null)
 				cancellation.Cancel();
+
+			//停止失败重试队列
+			_retriever.Stop(false);
 		}
 
 		protected override void OnResume()
 		{
+			//扫描调度集
 			this.Scan();
+
+			//启动失败重试队列
+			_retriever.Run();
 		}
 		#endregion
 
@@ -407,6 +447,9 @@ namespace Zongsoft.Scheduling
 				//打印异常日志
 				Zongsoft.Diagnostics.Logger.Error(ex);
 
+				//将失败的处理器加入到重试队列中
+				_retriever.Retry(handler, context);
+
 				//返回调用失败
 				return false;
 			}
@@ -425,6 +468,13 @@ namespace Zongsoft.Scheduling
 			}
 
 			return false;
+		}
+		#endregion
+
+		#region 重试处理
+		private void Retriever_Retried(object sender, HandledEventArgs e)
+		{
+			this.OnHandled(e.Handler, e.Context);
 		}
 		#endregion
 

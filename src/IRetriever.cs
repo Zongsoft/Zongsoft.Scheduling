@@ -32,66 +32,39 @@
  */
 
 using System;
-using System.Collections.Concurrent;
 
 namespace Zongsoft.Scheduling
 {
-	public class CronTrigger : ITrigger, IEquatable<ITrigger>
+	/// <summary>
+	/// 提供调度失败的重试机制的接口。
+	/// </summary>
+	public interface IRetriever
 	{
-		#region 成员字段
-		private Cronos.CronExpression _expression;
-		#endregion
+		/// <summary>表示重试失败的事件。</summary>
+		event EventHandler<HandledEventArgs> Failed;
 
-		#region 构造函数
-		internal CronTrigger(string expression)
-		{
-			if(string.IsNullOrWhiteSpace(expression))
-				throw new ArgumentNullException(nameof(expression));
+		/// <summary>表示重试成功的事件。</summary>
+		event EventHandler<HandledEventArgs> Succeed;
 
-			_expression = Cronos.CronExpression.Parse(expression, Cronos.CronFormat.IncludeSeconds);
-			this.Expression = _expression.ToString();
-		}
-		#endregion
+		/// <summary>
+		/// 启动重试。
+		/// </summary>
+		void Run();
 
-		#region 公共属性
-		public string Expression
-		{
-			get;
-		}
-		#endregion
+		/// <summary>
+		/// 停止重试。
+		/// </summary>
+		/// <param name="clean">指定是否清空积压的重试队列，如果为真则清空重试队列，否则不清理。</param>
+		void Stop(bool clean);
 
-		#region 公共方法
-		public DateTime? GetNextOccurrence(bool inclusive = false)
-		{
-			return _expression.GetNextOccurrence(Utility.Now(), inclusive);
-		}
-
-		public DateTime? GetNextOccurrence(DateTime origin, bool inclusive = false)
-		{
-			return _expression.GetNextOccurrence(Utility.Now(origin), inclusive);
-		}
-		#endregion
-
-		#region 重写方法
-		public bool Equals(ITrigger other)
-		{
-			return (other is CronTrigger cron) && cron._expression.Equals(_expression);
-		}
-
-		public override bool Equals(object obj)
-		{
-			return base.Equals(obj as CronTrigger);
-		}
-
-		public override int GetHashCode()
-		{
-			return _expression.GetHashCode();
-		}
-
-		public override string ToString()
-		{
-			return "Cron: " + _expression.ToString();
-		}
-		#endregion
+		/// <summary>
+		/// 将指定的调度处理加入到重试队列。
+		/// </summary>
+		/// <param name="handler">指定要重试的处理器。</param>
+		/// <param name="context">指定要重试的处理上下文对象。</param>
+		/// <remarks>
+		///		<para>该方法会自动触发启动操作。</para>
+		/// </remarks>
+		void Retry(IHandler handler, IHandlerContext context);
 	}
 }

@@ -32,41 +32,37 @@
  */
 
 using System;
-using System.Collections.Generic;
-using System.Collections.Concurrent;
 
 namespace Zongsoft.Scheduling
 {
-	public static class Trigger
+	/// <summary>
+	/// 表示处理器执行失败的重试信息。
+	/// </summary>
+	public struct HandlerFailure
 	{
-		#region 静态字段
-		private static readonly IDictionary<string, ITriggerBuilder> _builders = new Dictionary<string, ITriggerBuilder>(StringComparer.OrdinalIgnoreCase);
-		private static readonly ConcurrentDictionary<string, ITrigger> _triggers = new ConcurrentDictionary<string, ITrigger>(StringComparer.OrdinalIgnoreCase);
+		#region 公共字段
+		/// <summary>
+		/// 获取执行重试的次数。
+		/// </summary>
+		public readonly int Count;
+
+		/// <summary>
+		/// 获取最近一次重试的时间。
+		/// </summary>
+		public readonly DateTime? Timestamp;
+
+		/// <summary>
+		/// 获取重试的最后期限，如果为空表示无限制。
+		/// </summary>
+		public readonly DateTime? Expiration;
 		#endregion
 
-		#region 静态方法
-		public static ITrigger Cron(string expression)
+		#region 构造函数
+		public HandlerFailure(int count, DateTime? timestamp, DateTime? expiration)
 		{
-			if(string.IsNullOrWhiteSpace(expression))
-				return null;
-
-			return Get("cron", expression);
-		}
-
-		public static ITrigger Get(string scheme, string expression)
-		{
-			if(string.IsNullOrWhiteSpace(scheme))
-				throw new ArgumentNullException(nameof(scheme));
-
-			scheme = scheme.Trim();
-
-			return _triggers.GetOrAdd((scheme + ":" + expression), key =>
-			{
-				if(_builders.TryGetValue(scheme, out var builder))
-					return builder.Build(expression);
-
-				throw new InvalidProgramException($"The '{scheme}' trigger builder not found.");
-			});
+			this.Count = count;
+			this.Timestamp = timestamp;
+			this.Expiration = expiration;
 		}
 		#endregion
 	}

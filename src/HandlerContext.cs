@@ -57,6 +57,12 @@ namespace Zongsoft.Scheduling
 			get;
 		}
 
+		public HandlerFailure? Failure
+		{
+			get;
+			set;
+		}
+
 		public IScheduler Scheduler
 		{
 			get;

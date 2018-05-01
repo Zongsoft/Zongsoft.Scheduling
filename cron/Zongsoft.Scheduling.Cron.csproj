@@ -4,11 +4,11 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{CE9FB198-DF3E-4FE0-A817-E970B0CD7EBF}</ProjectGuid>
+    <ProjectGuid>{1E35DFBD-10E8-4D8C-9548-A5D840F4A98D}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Zongsoft.Scheduling</RootNamespace>
-    <AssemblyName>Zongsoft.Scheduling</AssemblyName>
+    <RootNamespace>Zongsoft.Scheduling.Cron</RootNamespace>
+    <AssemblyName>Zongsoft.Scheduling.Cron</AssemblyName>
     <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -20,7 +20,6 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Debug\Zongsoft.Scheduling.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -31,33 +30,26 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Cronos, Version=0.6.3.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\Cronos.0.6.3\lib\net45\Cronos.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="Microsoft.CSharp" />
-    <Reference Include="Zongsoft.CoreLibrary">
-      <HintPath>..\..\Zongsoft.CoreLibrary\src\bin\$(Configuration)\Zongsoft.CoreLibrary.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="HandlerFailure.cs" />
-    <Compile Include="IRetriever.cs" />
-    <Compile Include="Retriever.cs" />
-    <Compile Include="HandledEventArgs.cs" />
-    <Compile Include="HandlerContext.cs" />
-    <Compile Include="IHandlerContext.cs" />
-    <Compile Include="IHandler.cs" />
-    <Compile Include="IScheduler.cs" />
-    <Compile Include="ITrigger.cs" />
-    <Compile Include="ITriggerBuilder.cs" />
-    <Compile Include="ScheduledEventArgs.cs" />
-    <Compile Include="OccurredEventArgs.cs" />
+    <Compile Include="CronTrigger.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Scheduler.cs" />
-    <Compile Include="Trigger.cs" />
-    <Compile Include="Utility.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Zongsoft.Scheduling.plugin" />
+    <None Include="packages.config" />
+    <None Include="Zongsoft.Scheduling.Cron.plugin" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\src\Zongsoft.Scheduling.csproj">
+      <Project>{ce9fb198-df3e-4fe0-a817-e970b0cd7ebf}</Project>
+      <Name>Zongsoft.Scheduling</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
