@@ -6,12 +6,16 @@
 				copyright="Copyright (C) 2012-2017 Zongsoft Corporation. All rights reserved."
 				description="Created Date: 2018-05-01 by Popeye Zhong">
 	<manifest>
+		<assemblies>
+			<assembly name="Zongsoft.Scheduling.Cron" />
+		</assemblies>
+
 		<dependencies>
 			<dependency name="Zongsoft.Scheduling" />
 		</dependencies>
 	</manifest>
 
 	<extension path="/Workbench/Scheduling/Triggers">
-		<object name="Cron" type="Zongsoft.Scheduling.CronTrigger, Zongsoft.Scheduling.Cron" />
+		<object name="Cron" value="{static:Zongsoft.Scheduling.CronTrigger.Builder, Zongsoft.Scheduling.Cron}" />
 	</extension>
 </plugin>

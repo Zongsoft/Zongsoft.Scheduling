@@ -39,8 +39,15 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Commands\SchedulerCommand.cs" />
+    <Compile Include="Commands\SchedulerListenCommand.cs" />
     <Compile Include="HandlerFailure.cs" />
     <Compile Include="IRetriever.cs" />
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
     <Compile Include="Retriever.cs" />
     <Compile Include="HandledEventArgs.cs" />
     <Compile Include="HandlerContext.cs" />
@@ -57,7 +64,15 @@
     <Compile Include="Utility.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Zongsoft.Scheduling.plugin" />
+    <None Include="Zongsoft.Scheduling.plugin">
+      <SubType>Designer</SubType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

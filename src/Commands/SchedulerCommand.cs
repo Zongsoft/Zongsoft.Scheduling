@@ -33,42 +33,61 @@
 
 using System;
 
-namespace Zongsoft.Scheduling
-{
-	/// <summary>
-	/// 提供调度失败的重试机制的接口。
-	/// </summary>
-	public interface IRetriever
-	{
-		#region 事件定义
-		/// <summary>表示重试失败的事件。</summary>
-		event EventHandler<HandledEventArgs> Failed;
+using Zongsoft.Services;
 
-		/// <summary>表示重试成功的事件。</summary>
-		event EventHandler<HandledEventArgs> Succeed;
+namespace Zongsoft.Scheduling.Commands
+{
+	public class SchedulerCommand : CommandBase<CommandContext>
+	{
+		#region 成员字段
+		private IScheduler _scheduler;
 		#endregion
 
-		#region 方法定义
-		/// <summary>
-		/// 启动重试。
-		/// </summary>
-		void Run();
+		#region 构造函数
+		public SchedulerCommand() : base("Scheduler")
+		{
+		}
 
-		/// <summary>
-		/// 停止重试。
-		/// </summary>
-		/// <param name="clean">指定是否清空积压的重试队列，如果为真则清空重试队列，否则不清理。</param>
-		void Stop(bool clean);
+		public SchedulerCommand(string name) : base(name)
+		{
+		}
+		#endregion
 
-		/// <summary>
-		/// 将指定的调度处理加入到重试队列。
-		/// </summary>
-		/// <param name="handler">指定要重试的处理器。</param>
-		/// <param name="context">指定要重试的处理上下文对象。</param>
-		/// <remarks>
-		///		<para>该方法会自动触发启动操作。</para>
-		/// </remarks>
-		void Retry(IHandler handler, IHandlerContext context);
+		#region 公共属性
+		public IScheduler Scheduler
+		{
+			get
+			{
+				return _scheduler;
+			}
+			set
+			{
+				_scheduler = value ?? throw new ArgumentNullException();
+			}
+		}
+		#endregion
+
+		#region 执行方法
+		protected override object OnExecute(CommandContext context)
+		{
+			if(context.Parameter is IScheduler scheduler)
+				_scheduler = scheduler;
+
+			return _scheduler;
+		}
+		#endregion
+
+		#region 静态方法
+		public static IScheduler GetScheduler(CommandTreeNode node)
+		{
+			if(node == null)
+				return null;
+
+			if(node.Command is SchedulerCommand command)
+				return command.Scheduler;
+
+			return GetScheduler(node.Parent);
+		}
 		#endregion
 	}
 }

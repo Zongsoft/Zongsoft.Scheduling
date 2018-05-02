@@ -43,10 +43,11 @@ namespace Zongsoft.Scheduling
 	{
 		#region 事件声明
 		/// <summary>表示一个处理器执行完成的事件。</summary>
-		/// <remarks>通过<seealso cref="IHandlerContext.Failure"/>属性来确认当前处理完成是重试完成以及重试情况的信息。</remarks>
+		/// <remarks>通过<seealso cref="IHandlerContext.Failure"/>属性来确认当前处理完成是否为重试完成以及重试情况的信息。</remarks>
 		event EventHandler<HandledEventArgs> Handled;
 
-		/// <summary>表示处理执行完成的事件，该事件总是处于<seealso cref="Handled"/>事件之后。</summary>
+		/// <summary>表示一次处理执行完成的事件，该事件总是处于<seealso cref="Handled"/>事件之后。</summary>
+		/// <remarks>即使一次处理执行中的所有处理器都调用失败，该事件也会发生。</remarks>
 		event EventHandler<OccurredEventArgs> Occurred;
 
 		/// <summary>表示一个处理器调度完成的事件。</summary>
@@ -82,7 +83,7 @@ namespace Zongsoft.Scheduling
 		/// <summary>
 		/// 获取调度器中的调度触发器集。
 		/// </summary>
-		IEnumerable<ITrigger> Triggers
+		IReadOnlyCollection<ITrigger> Triggers
 		{
 			get;
 		}
@@ -90,7 +91,15 @@ namespace Zongsoft.Scheduling
 		/// <summary>
 		/// 获取调度器中的调度处理器集。
 		/// </summary>
-		IEnumerable<IHandler> Handlers
+		IReadOnlyCollection<IHandler> Handlers
+		{
+			get;
+		}
+
+		/// <summary>
+		/// 获取一个值，指示当前调度器是否处于工作中。
+		/// </summary>
+		bool IsScheduling
 		{
 			get;
 		}

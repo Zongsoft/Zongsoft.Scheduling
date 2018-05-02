@@ -5,3 +5,4 @@ src/bin/$(Edition)/Zongsoft.Scheduling.*
 cron/Zongsoft.Scheduling.Cron.option
 cron/Zongsoft.Scheduling.Cron.plugin
 cron/bin/$(Edition)/Zongsoft.Scheduling.Cron.*
+cron/bin/$(Edition)/Cronos.*

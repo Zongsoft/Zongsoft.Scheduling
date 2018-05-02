@@ -46,6 +46,7 @@ namespace Zongsoft.Scheduling
 		#endregion
 
 		#region 成员字段
+		private AutoResetEvent _semaphore;
 		private CancellationTokenSource _cancellation;
 		private readonly ConcurrentQueue<RetryingToken> _queue;
 		#endregion
@@ -53,6 +54,7 @@ namespace Zongsoft.Scheduling
 		#region 构造函数
 		public Retriever()
 		{
+			_semaphore = new AutoResetEvent(true);
 			_queue = new ConcurrentQueue<RetryingToken>();
 		}
 		#endregion
@@ -60,60 +62,72 @@ namespace Zongsoft.Scheduling
 		#region 公共方法
 		public void Run()
 		{
-			var cancellation = _cancellation;
+			//如果取消标记源不为空（表示启动过）并且没有被取消过，则表示当前状态为正常运行中
+			if(_cancellation != null && !_cancellation.IsCancellationRequested)
+				return;
 
-			if(cancellation == null || cancellation.IsCancellationRequested)
+			try
 			{
-				var original = Interlocked.Exchange(ref _cancellation, new CancellationTokenSource());
+				//等待信号量
+				_semaphore.WaitOne();
 
-				if(original != null)
-					original.Cancel();
+				if(_cancellation == null || _cancellation.IsCancellationRequested)
+				{
+					//重新创建一个新的取消标记源
+					_cancellation = new CancellationTokenSource();
+
+					//启动一个长期任务来运行重试处理方法
+					Task.Factory.StartNew(OnRetry,
+					                      _cancellation.Token,
+					                      _cancellation.Token,
+					                      TaskCreationOptions.LongRunning,
+					                      TaskScheduler.Default);
+				}
 			}
-
-			if(cancellation.IsCancellationRequested)
-				Task.Factory.StartNew(OnRetry, cancellation.Token, cancellation.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+			finally
+			{
+				//恢复信号量
+				_semaphore.Set();
+			}
 		}
 
 		public void Stop(bool clean)
 		{
-			var cancellation = _cancellation;
-
-			if(cancellation != null)
-				cancellation.Cancel();
-
-			if(clean)
+			//如果取消标记源为空（表示还未启动过）或者已经被取消了（即已经停止了），则返回即可
+			if(_cancellation == null || _cancellation.IsCancellationRequested)
 			{
-				while(!_queue.IsEmpty)
-				{
-					_queue.TryDequeue(out var _);
-				}
+				if(clean) //根据需要清空重试队列
+					this.ClearQueue();
+
+				return;
+			}
+
+			try
+			{
+				//等待信号量
+				_semaphore.WaitOne();
+
+				//如果没有取消标记源不为空（表示已启动过）并且未被取消，则取消它（即中断重试任务）
+				if(_cancellation != null && !_cancellation.IsCancellationRequested)
+					_cancellation.Cancel();
+
+				if(clean) //清空重试队列
+					this.ClearQueue();
+			}
+			finally
+			{
+				//释放信号量
+				_semaphore.Set();
 			}
 		}
 
 		public void Retry(IHandler handler, IHandlerContext context)
 		{
 			//获取下次触发的时间点
-			var limit = context.Trigger.GetNextOccurrence();
-
-			//如果下次触发时间点不为空，则表示还有机会触发
-			if(limit.HasValue)
-			{
-				//计算再次触发的间隔时长
-				var duration = limit.Value.AddSeconds(1) - DateTime.Now;
-
-				//根据再次触发的间隔时长计算重试的最后期限
-				if(duration.TotalDays > 28)
-					limit = limit.Value.AddDays(-1);
-				else if(duration.TotalDays > 1)
-					limit = limit.Value.AddHours(-1);
-				else if(duration.TotalHours > 1)
-					limit = limit.Value.AddMinutes(-30);
-				else
-					limit = limit.Value.AddMinutes(-1);
-			}
+			var expiration = context.Trigger.GetNextOccurrence();
 
 			//将处理器加入到重试队列
-			_queue.Enqueue(new RetryingToken(handler, context, limit));
+			_queue.Enqueue(new RetryingToken(handler, context, this.GetExpiration(handler, context, expiration)));
 
 			//如果取消源为空（未启动过重试任务）或已经被取消（即重试任务被中断），则应该重启重试任务
 			if(_cancellation == null || _cancellation.IsCancellationRequested)
@@ -181,6 +195,9 @@ namespace Zongsoft.Scheduling
 					//更新处理器的最后重试时间
 					token.RetriedTimestamp = DateTime.Now;
 
+					//更新上下文中的重试信息
+					token.Context.Failure = new HandlerFailure(token.RetriedCount, token.RetriedTimestamp, token.Expiration);
+
 					//激发重试失败或成功的事件
 					if(isFailed)
 						this.OnFailed(token.Handler, token.Context);
@@ -188,6 +205,34 @@ namespace Zongsoft.Scheduling
 						this.OnSucceed(token.Handler, token.Context);
 				}
 			}
+		}
+		#endregion
+
+		#region 虚拟方法
+		protected virtual DateTime? GetExpiration(IHandler handler, IHandlerContext context, DateTime? timestamp)
+		{
+			//如果下次触发时间为空（即没有后续触发了），则返回空（不限制）
+			if(timestamp == null)
+				return null;
+
+			//计算距离下次触发的间隔时长
+			var duration = timestamp.Value - (timestamp.Value.Kind == DateTimeKind.Utc ? Utility.Now() : DateTime.Now);
+
+			//如果下次触发时间还小于当前，则返回下次触发时间为限制时
+			if(duration < TimeSpan.Zero)
+				return timestamp;
+
+			if(duration.TotalDays > 1) //如果大于1天，则按每天递减1小时，递减量最多不超过24小时
+				return timestamp.Value.AddHours(-Math.Min(duration.TotalDays, 24));
+
+			if(duration.TotalHours > 1) //如果大于1小时并小于等于24小时，则按每小时递减10分钟，递减量最多不超过240分钟（4个小时）
+				return timestamp.Value.AddMinutes(-(duration.TotalHours * 10));
+
+			if(duration.TotalMinutes > 1) //如果大于1分钟并小于等于60分钟，则按每分钟递减10秒钟，递减量最多不超过600秒（10分钟）
+				return timestamp.Value.AddSeconds(-(duration.TotalMinutes * 10));
+
+			//小于或等于1分钟，则每10秒钟递减1秒钟，递减量为1秒至6秒
+			return timestamp.Value.AddSeconds(-Math.Max(duration.TotalSeconds / 10, 1));
 		}
 		#endregion
 
@@ -210,6 +255,14 @@ namespace Zongsoft.Scheduling
 		#endregion
 
 		#region 私有方法
+		private void ClearQueue()
+		{
+			while(!_queue.IsEmpty)
+			{
+				_queue.TryDequeue(out var _);
+			}
+		}
+
 		private DateTime? GetLatency(RetryingToken token)
 		{
 			//如果待重试的处理器重试期限已过，则返回空（即忽略它）
@@ -225,7 +278,7 @@ namespace Zongsoft.Scheduling
 
 			//如果待重试项有最后期限时间并且计算后的延迟执行时间大于该期限值，则返回期限时
 			if(token.Expiration.HasValue && latency > token.Expiration.Value)
-				return token.Expiration.Value.AddSeconds(-1);
+				return token.Expiration.Value;
 
 			return latency;
 		}

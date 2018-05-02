@@ -14,4 +14,14 @@
 	<extension path="/Workbench/Scheduling">
 		<object name="Triggers" value="{static:Zongsoft.Scheduling.Trigger.Builders, Zongsoft.Scheduling}" />
 	</extension>
+
+	<extension path="/Workbench/Executor/Commands">
+		<object name="Scheduler">
+			<scheduler.command>
+				<object type="Zongsoft.Scheduling.Commands.SchedulerCommand, Zongsoft.Scheduling" />
+			</scheduler.command>
+
+			<object name="Listen" type="Zongsoft.Scheduling.Commands.SchedulerListenCommand, Zongsoft.Scheduling" />
+		</object>
+	</extension>
 </plugin>

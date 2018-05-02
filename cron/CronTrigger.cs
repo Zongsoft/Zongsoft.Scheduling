@@ -36,8 +36,12 @@ using System.Collections.Concurrent;
 
 namespace Zongsoft.Scheduling
 {
-	public class CronTrigger : ITrigger, IEquatable<ITrigger>, ITriggerBuilder
+	public class CronTrigger : ITrigger, IEquatable<ITrigger>
 	{
+		#region 单例字段
+		public static readonly ITriggerBuilder Builder = new CronTriggerBuilder();
+		#endregion
+
 		#region 成员字段
 		private Cronos.CronExpression _expression;
 		#endregion
@@ -69,16 +73,6 @@ namespace Zongsoft.Scheduling
 		}
 		#endregion
 
-		#region 构建方法
-		public ITrigger Build(string expression)
-		{
-			if(string.IsNullOrWhiteSpace(expression))
-				throw new ArgumentNullException(nameof(expression));
-
-			return new CronTrigger(expression);
-		}
-		#endregion
-
 		#region 重写方法
 		public bool Equals(ITrigger other)
 		{
@@ -106,6 +100,19 @@ namespace Zongsoft.Scheduling
 		private DateTime Now(DateTime? timestamp = null)
 		{
 			return new DateTime(timestamp.HasValue ? timestamp.Value.Ticks : DateTime.Now.Ticks, DateTimeKind.Utc);
+		}
+		#endregion
+
+		#region 构建器类
+		private class CronTriggerBuilder : ITriggerBuilder
+		{
+			public ITrigger Build(string expression)
+			{
+				if(string.IsNullOrWhiteSpace(expression))
+					throw new ArgumentNullException(nameof(expression));
+
+				return new CronTrigger(expression);
+			}
 		}
 		#endregion
 	}

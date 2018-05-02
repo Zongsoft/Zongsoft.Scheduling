@@ -44,6 +44,16 @@ namespace Zongsoft.Scheduling
 		private static readonly ConcurrentDictionary<string, ITrigger> _triggers = new ConcurrentDictionary<string, ITrigger>(StringComparer.OrdinalIgnoreCase);
 		#endregion
 
+		#region 静态属性
+		public static IDictionary<string, ITriggerBuilder> Builders
+		{
+			get
+			{
+				return _builders;
+			}
+		}
+		#endregion
+
 		#region 静态方法
 		public static ITrigger Cron(string expression)
 		{

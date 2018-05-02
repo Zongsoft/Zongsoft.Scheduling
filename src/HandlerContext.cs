@@ -43,7 +43,7 @@ namespace Zongsoft.Scheduling
 		#endregion
 
 		#region 构造函数
-		public HandlerContext(int index, IScheduler scheduler, ITrigger trigger)
+		public HandlerContext(IScheduler scheduler, ITrigger trigger, int index)
 		{
 			this.Index = index;
 			this.Scheduler = scheduler ?? throw new ArgumentNullException(nameof(scheduler));
