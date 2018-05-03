@@ -22,6 +22,11 @@
 			</scheduler.command>
 
 			<object name="Listen" type="Zongsoft.Scheduling.Commands.SchedulerListenCommand, Zongsoft.Scheduling" />
+			<object name="Info" value="{static:Zongsoft.Services.Commands.WorkerInfoCommand.Default, Zongsoft.CoreLibrary}" />
+			<object name="Stop" value="{static:Zongsoft.Services.Commands.WorkerStopCommand.Default, Zongsoft.CoreLibrary}" />
+			<object name="Start" value="{static:Zongsoft.Services.Commands.WorkerStartCommand.Default, Zongsoft.CoreLibrary}" />
+			<object name="Pause" value="{static:Zongsoft.Services.Commands.WorkerPauseCommand.Default, Zongsoft.CoreLibrary}" />
+			<object name="Resume" value="{static:Zongsoft.Services.Commands.WorkerResumeCommand.Default, Zongsoft.CoreLibrary}" />
 		</object>
 	</extension>
 </plugin>

@@ -40,74 +40,63 @@ using Zongsoft.Terminals;
 
 namespace Zongsoft.Scheduling.Commands
 {
-	public class SchedulerListenCommand : CommandBase<CommandContext>
+	public class SchedulerListenCommand : Zongsoft.Services.Commands.WorkerListenCommand
 	{
-		#region 私有变量
-		private ICommandOutlet _outlet;
-		private IScheduler _scheduler;
-		private AutoResetEvent _semaphore;
-		#endregion
-
 		#region 构造函数
-		public SchedulerListenCommand() : base("Listen")
+		public SchedulerListenCommand()
 		{
-			_semaphore = new AutoResetEvent(false);
 		}
 
 		public SchedulerListenCommand(string name) : base(name)
 		{
-			_semaphore = new AutoResetEvent(false);
 		}
 		#endregion
 
 		#region 重写方法
-		protected override object OnExecute(CommandContext context)
+		protected override void OnListening(CommandContext context, IWorker worker)
 		{
-			//获取当前命令执行器对应的终端
-			var terminal = (context.Executor as TerminalCommandExecutor)?.Terminal;
+			var scheduler = worker as IScheduler;
 
-			//如果当前命令执行器不是终端命令执行器则抛出不支持的异常
-			if(terminal == null)
-				throw new NotSupportedException("The listen command must be run in terminal executor.");
+			if(scheduler == null)
+				throw new CommandException("");
 
-			//查找获取当前命令对应的调度器对象
-			_scheduler = SchedulerCommand.GetScheduler(context.CommandNode);
+			scheduler.Handled += this.Scheduler_Handled;
+			scheduler.Occurred += this.Scheduler_Occurred;
+			scheduler.Scheduled += this.Scheduler_Scheduled;
 
-			//如果调度器查找失败，则抛出异常
-			if(_scheduler == null)
-				throw new InvalidOperationException($"The required scheduler not found.");
+			if(scheduler.Retriever != null)
+			{
+				scheduler.Retriever.Failed += this.Retriever_Failed;
+				scheduler.Retriever.Succeed += this.Retriever_Succeed;
+			}
 
-			//保存当前命令上下文的输出端子
-			_outlet = context.Output;
+			//调用基类同名方法（打印欢迎信息）
+			base.OnListening(context, worker);
 
-			//挂载当前终端的中断事件
-			terminal.Aborting += this.Terminal_Aborting;
-
-			//绑定调度器的各种侦听事件
-			this.Bind(_scheduler);
-
-			//打印欢迎信息
-			this.PrintWelcome(_scheduler);
 			//打印基本信息
-			this.PrintInfo(_scheduler);
+			this.PrintInfo(scheduler);
+		}
 
-			//等待信号量
-			_semaphore.WaitOne();
+		protected override void OnListened(CommandContext context, IWorker worker)
+		{
+			var scheduler = worker as IScheduler;
 
-			//取消所有侦听事件
-			this.Unbind(_scheduler);
+			if(scheduler == null)
+				return;
 
-			//返回侦听的调度器
-			return _scheduler;
+			scheduler.Handled -= this.Scheduler_Handled;
+			scheduler.Occurred -= this.Scheduler_Occurred;
+			scheduler.Scheduled -= this.Scheduler_Scheduled;
+
+			if(scheduler.Retriever != null)
+			{
+				scheduler.Retriever.Failed -= this.Retriever_Failed;
+				scheduler.Retriever.Succeed -= this.Retriever_Succeed;
+			}
 		}
 		#endregion
 
 		#region 事件处理
-		private void Scheduler_StateChanged(object sender, WorkerStateChangedEventArgs e)
-		{
-			this.PrintInfo((IScheduler)sender);
-		}
-
 		private void Scheduler_Handled(object sender, HandledEventArgs e)
 		{
 			var extra = string.Empty;
@@ -125,14 +114,14 @@ namespace Zongsoft.Scheduling.Commands
 					extra += " " + Properties.Resources.Scheduler_Retry_Unlimited;
 			}
 
-			_outlet.WriteLine(CommandOutletColor.Green,
-			                  string.Format(Properties.Resources.Scheduler_Handled, e.Context.Index, e.Handler, e.Context.Trigger, extra));
+			this.Context.Output.WriteLine(CommandOutletColor.Green,
+				string.Format(Properties.Resources.Scheduler_Handled, e.Context.Index, e.Handler, e.Context.Trigger, extra));
 		}
 
 		private void Scheduler_Occurred(object sender, OccurredEventArgs e)
 		{
-			_outlet.WriteLine(CommandOutletColor.Magenta, Properties.Resources.Scheduler_Occurred, e.Count);
-			_outlet.WriteLine(this.GetMessage(sender as IScheduler));
+			this.Context.Output.WriteLine(CommandOutletColor.Magenta, Properties.Resources.Scheduler_Occurred, e.Count);
+			this.Context.Output.WriteLine(this.GetMessage(sender as IScheduler));
 		}
 
 		private void Scheduler_Scheduled(object sender, ScheduledEventArgs e)
@@ -144,8 +133,8 @@ namespace Zongsoft.Scheduling.Commands
 				message += $"[{i + 1}] {e.Triggers[i]}" + Environment.NewLine;
 			}
 
-			_outlet.WriteLine(CommandOutletColor.DarkGreen, message);
-			_outlet.WriteLine(this.GetMessage(sender as IScheduler));
+			this.Context.Output.WriteLine(CommandOutletColor.DarkGreen, message);
+			this.Context.Output.WriteLine(this.GetMessage(sender as IScheduler));
 		}
 
 		private void Retriever_Failed(object sender, HandledEventArgs e)
@@ -165,29 +154,20 @@ namespace Zongsoft.Scheduling.Commands
 				e.Context.Failure.Value.Count,
 				e.Context.Failure.Value.Timestamp);
 
-			_outlet.WriteLine(CommandOutletColor.Red, $"{message}\t {extra}");
+			this.Context.Output.WriteLine(CommandOutletColor.Red, $"{message}\t {extra}");
 		}
 
 		private void Retriever_Succeed(object sender, HandledEventArgs e)
 		{
 			//_outlet.Write(CommandOutletColor.Green, Properties.Resources.Scheduler_Retry_Succeed);
 		}
-
-		private void Terminal_Aborting(object sender, System.ComponentModel.CancelEventArgs e)
-		{
-			//阻止命令执行器被关闭
-			e.Cancel = true;
-
-			//释放信号量
-			_semaphore.Set();
-		}
 		#endregion
 
 		#region 私有方法
 		private void PrintWelcome(IScheduler scheduler)
 		{
-			_outlet.WriteLine(Properties.Resources.Scheduler_Listen_Welcome, scheduler.Name);
-			_outlet.WriteLine(CommandOutletColor.DarkYellow, Properties.Resources.Scheduler_Listen_ToExit_Prompt + Environment.NewLine);
+			this.Context.Output.WriteLine(Properties.Resources.Scheduler_Listen_Welcome, scheduler.Name);
+			this.Context.Output.WriteLine(CommandOutletColor.DarkYellow, Properties.Resources.Scheduler_Listen_ToExit_Prompt + Environment.NewLine);
 		}
 
 		private void PrintInfo(IScheduler scheduler)
@@ -195,8 +175,8 @@ namespace Zongsoft.Scheduling.Commands
 			var state = this.GetState(scheduler, out var color);
 			var message = this.GetMessage(scheduler);
 
-			_outlet.Write(color, state);
-			_outlet.WriteLine(message + Environment.NewLine);
+			this.Context.Output.Write(color, state);
+			this.Context.Output.WriteLine(message + Environment.NewLine);
 		}
 
 		private string GetState(IScheduler scheduler, out CommandOutletColor color)
@@ -232,40 +212,6 @@ namespace Zongsoft.Scheduling.Commands
 
 			return string.Format(Properties.Resources.Scheduler_Counting, scheduler.Triggers.Count, scheduler.Handlers.Count) +
 			       " | " + lastTime + " | " + nextTime + Environment.NewLine;
-		}
-
-		private void Bind(IScheduler scheduler)
-		{
-			if(scheduler == null)
-				return;
-
-			scheduler.Handled += this.Scheduler_Handled;
-			scheduler.Occurred += this.Scheduler_Occurred;
-			scheduler.Scheduled += this.Scheduler_Scheduled;
-			scheduler.StateChanged += this.Scheduler_StateChanged;
-
-			if(scheduler.Retriever != null)
-			{
-				scheduler.Retriever.Failed += this.Retriever_Failed;
-				scheduler.Retriever.Succeed += this.Retriever_Succeed;
-			}
-		}
-
-		private void Unbind(IScheduler scheduler)
-		{
-			if(scheduler == null)
-				return;
-
-			scheduler.Handled -= this.Scheduler_Handled;
-			scheduler.Occurred -= this.Scheduler_Occurred;
-			scheduler.Scheduled -= this.Scheduler_Scheduled;
-			scheduler.StateChanged -= this.Scheduler_StateChanged;
-
-			if(scheduler.Retriever != null)
-			{
-				scheduler.Retriever.Failed -= this.Retriever_Failed;
-				scheduler.Retriever.Succeed -= this.Retriever_Succeed;
-			}
 		}
 		#endregion
 	}

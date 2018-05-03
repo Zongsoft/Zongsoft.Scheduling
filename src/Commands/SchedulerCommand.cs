@@ -33,16 +33,10 @@
 
 using System;
 
-using Zongsoft.Services;
-
 namespace Zongsoft.Scheduling.Commands
 {
-	public class SchedulerCommand : CommandBase<CommandContext>
+	public class SchedulerCommand : Zongsoft.Services.Commands.WorkerCommandBase
 	{
-		#region 成员字段
-		private IScheduler _scheduler;
-		#endregion
-
 		#region 构造函数
 		public SchedulerCommand() : base("Scheduler")
 		{
@@ -58,35 +52,12 @@ namespace Zongsoft.Scheduling.Commands
 		{
 			get
 			{
-				return _scheduler;
+				return this.Worker as IScheduler;
 			}
 			set
 			{
-				_scheduler = value ?? throw new ArgumentNullException();
+				this.Worker = value;
 			}
-		}
-		#endregion
-
-		#region 执行方法
-		protected override object OnExecute(CommandContext context)
-		{
-			if(context.Parameter is IScheduler scheduler)
-				_scheduler = scheduler;
-
-			return _scheduler;
-		}
-		#endregion
-
-		#region 静态方法
-		public static IScheduler GetScheduler(CommandTreeNode node)
-		{
-			if(node == null)
-				return null;
-
-			if(node.Command is SchedulerCommand command)
-				return command.Scheduler;
-
-			return GetScheduler(node.Parent);
 		}
 		#endregion
 	}
