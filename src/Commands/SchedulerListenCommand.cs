@@ -94,6 +94,9 @@ namespace Zongsoft.Scheduling.Commands
 			//等待信号量
 			_semaphore.WaitOne();
 
+			//取消所有侦听事件
+			this.Unbind(_scheduler);
+
 			//返回侦听的调度器
 			return _scheduler;
 		}
@@ -142,6 +145,7 @@ namespace Zongsoft.Scheduling.Commands
 			}
 
 			_outlet.WriteLine(CommandOutletColor.DarkGreen, message);
+			_outlet.WriteLine(this.GetMessage(sender as IScheduler));
 		}
 
 		private void Retriever_Failed(object sender, HandledEventArgs e)
@@ -173,9 +177,6 @@ namespace Zongsoft.Scheduling.Commands
 		{
 			//阻止命令执行器被关闭
 			e.Cancel = true;
-
-			//取消所有侦听事件
-			this.Unbind(_scheduler);
 
 			//释放信号量
 			_semaphore.Set();
@@ -230,7 +231,7 @@ namespace Zongsoft.Scheduling.Commands
 			var nextTime = scheduler.NextTime.HasValue ? string.Format(Properties.Resources.Scheduler_NextTime, scheduler.NextTime.Value.ToString()) : Properties.Resources.Scheduler_NoNextTime;
 
 			return string.Format(Properties.Resources.Scheduler_Counting, scheduler.Triggers.Count, scheduler.Handlers.Count) +
-			       " | " + lastTime + " | " + nextTime;
+			       " | " + lastTime + " | " + nextTime + Environment.NewLine;
 		}
 
 		private void Bind(IScheduler scheduler)

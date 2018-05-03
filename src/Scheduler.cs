@@ -52,9 +52,8 @@ namespace Zongsoft.Scheduling
 		#endregion
 
 		#region 成员字段
-		private long _nextTick = 0;
-		private long _lastTick = 0;
-		private CancellationTokenSource _cancellation;
+		private DateTime? _lastTime;
+		private TaskToken _token;
 		private ConcurrentDictionary<ITrigger, ScheduleToken> _schedules;
 		private HashSet<IHandler> _handlers;
 		private TriggerCollection _triggers;
@@ -81,12 +80,7 @@ namespace Zongsoft.Scheduling
 		{
 			get
 			{
-				var next = _nextTick;
-
-				if(next == 0)
-					return null;
-
-				return new DateTime(next);
+				return _token?.Timestamp;
 			}
 		}
 
@@ -94,12 +88,7 @@ namespace Zongsoft.Scheduling
 		{
 			get
 			{
-				var recently = _lastTick;
-
-				if(recently == 0)
-					return null;
-
-				return new DateTime(recently);
+				return _lastTime;
 			}
 		}
 
@@ -150,7 +139,8 @@ namespace Zongsoft.Scheduling
 		{
 			get
 			{
-				return _cancellation != null && !_cancellation.IsCancellationRequested;
+				var token = _token;
+				return token != null && !token.IsCancellationRequested;
 			}
 		}
 
@@ -261,10 +251,12 @@ namespace Zongsoft.Scheduling
 
 		public void Unschedule()
 		{
-			var cancellation = _cancellation;
+			//将待触发的任务标记置空
+			var token = Interlocked.Exchange(ref _token, null);
 
-			if(cancellation != null)
-				cancellation.Cancel();
+			//如果待触发的任务标记不为空，则将其取消
+			if(token != null)
+				token.Cancel();
 
 			_handlers.Clear();
 			_schedules.Clear();
@@ -280,6 +272,9 @@ namespace Zongsoft.Scheduling
 				foreach(var schedule in _schedules.Values)
 				{
 					schedule.RemoveHandler(handler);
+
+					if(schedule.Count == 0)
+						_schedules.TryRemove(schedule.Trigger, out var _);
 				}
 
 				return true;
@@ -315,13 +310,12 @@ namespace Zongsoft.Scheduling
 
 		protected override void OnStop(string[] args)
 		{
-			var cancellation = _cancellation;
+			//将待触发的任务标记置空
+			var token = Interlocked.Exchange(ref _token, null);
 
-			if(cancellation != null)
-				cancellation.Cancel();
-
-			//清除下次触发时间
-			_nextTick = 0;
+			//如果待触发的任务标记不为空，则将其取消
+			if(token != null)
+				token.Cancel();
 
 			//停止失败重试队列并清空所有待重试项
 			_retriever.Stop(true);
@@ -329,13 +323,12 @@ namespace Zongsoft.Scheduling
 
 		protected override void OnPause()
 		{
-			var cancellation = _cancellation;
+			//将待触发的任务标记置空
+			var token = Interlocked.Exchange(ref _token, null);
 
-			if(cancellation != null)
-				cancellation.Cancel();
-
-			//清除下次触发时间
-			_nextTick = 0;
+			//如果待触发的任务标记不为空，则将其取消
+			if(token != null)
+				token.Cancel();
 
 			//停止失败重试队列
 			_retriever.Stop(false);
@@ -376,6 +369,10 @@ namespace Zongsoft.Scheduling
 			//循环遍历排程集，找出其中最早的触发时间点
 			foreach(var schedule in _schedules.Values)
 			{
+				//如果当前排程项的处理器集空了，则忽略它
+				if(schedule.Count == 0)
+					continue;
+
 				//获取当前排程项的下次触发时间
 				var timestamp = schedule.Trigger.GetNextOccurrence();
 
@@ -419,37 +416,64 @@ namespace Zongsoft.Scheduling
 		#region 私有方法
 		private void Refire(ScheduleToken schedule)
 		{
-			//如果当前任务取消标记为空（表示还没有启动排程）或任务取消标记已经被取消过（表示任务处于暂停或停止状态）
-			if(_cancellation == null || _cancellation.IsCancellationRequested)
+			//获取当前的任务标记
+			var token = _token;
+
+			//如果当前任务标记为空（表示还没有启动排程）或任务标记已经被取消过（表示任务处于暂停或停止状态）
+			if(token == null || token.IsCancellationRequested)
 				return;
 
 			//获取下次触发的时间点
 			var timestamp = schedule.Trigger.GetNextOccurrence();
 
-			//如果下次触发时间不为空（即需要触发）并且触发时间小于已经排程中的下次待触发时间，则立刻重新调度
-			if(timestamp.HasValue && (_nextTick == 0 || timestamp.Value.Ticks < _nextTick))
+			//如果下次触发时间不为空（即需要触发）并且新得到的触发时间小于当前待触发的时间，则尝试调度新的时间点
+			if(timestamp.HasValue && timestamp < token.Timestamp)
 			{
-				//将当前排程项立刻插入到排程进度中，即替换当前待触发的排程项
 				this.Fire(timestamp.Value, new[] { schedule });
 			}
 		}
 
-		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.Synchronized)]
 		private void Fire(DateTime timestamp, IEnumerable<ScheduleToken> schedules)
 		{
 			if(schedules == null)
 				return;
 
-			//如果待触发时间有效并且指定要重新触发的时间大于或等于待触发时间则忽略当次调度
-			if(_nextTick > 0 && timestamp.Ticks >= _nextTick)
+			//首先获取待处理的任务标记
+			var pendding = _token;
+
+			//如果待处理的任务标记有效并且指定要重新触发的时间大于或等于待触发时间则忽略当次调度
+			if(pendding != null && timestamp >= pendding.Timestamp)
 				return;
 
-			//始终创建一个新的任务取消标记源
-			var original = Interlocked.Exchange(ref _cancellation, new CancellationTokenSource());
+			//创建一个新的任务标记
+			var current = new TaskToken(timestamp);
 
-			//如果原有任务标记不为空（表示已经启动过），则将原有任务取消掉
-			if(original != null)
-				original.Cancel();
+			//循环确保本次替换的任务标记没有覆盖到其他线程乱入的
+			while(pendding == null || timestamp < pendding.Timestamp)
+			{
+				//将新的触发凭证设置到全局变量，并确保该设置不会覆盖其他线程的乱入
+				var last = Interlocked.CompareExchange(ref _token, current, pendding);
+
+				//如果设置成功则退出该循环
+				if(last == pendding)
+					break;
+				else //设置失败：表示中间有其他线程的乱入，则将乱入的最新值设置为比对的凭证
+					pendding = last;
+			}
+
+			//注意：再次确认待处理的任务标记有效并且指定要重新触发的时间大于或等于待触发时间则忽略当次调度
+			if(pendding != null && timestamp >= pendding.Timestamp)
+			{
+				//将刚创建的新出发凭证销毁
+				current.Dispose();
+
+				//退出
+				return;
+			}
+
+			//如果原有任务标记不为空，则将原有任务取消掉
+			if(pendding != null)
+				pendding.Cancel();
 
 			//获取延迟的时长
 			var duration = timestamp.Kind == DateTimeKind.Utc ? timestamp - Utility.Now() : timestamp - DateTime.Now;
@@ -458,13 +482,13 @@ namespace Zongsoft.Scheduling
 			if(duration < TimeSpan.Zero)
 				duration = TimeSpan.Zero;
 
-			//更新下次激发的时间点
-			_nextTick = timestamp.Ticks;
-
 			Task.Delay(duration).ContinueWith((task, state) =>
 			{
 				//将最近触发时间点设为此时此刻
-				_lastTick = _nextTick;
+				_lastTime = current.Timestamp;
+
+				//注意：必须将待处理任务标记置空（否则会误导Scan方法重新进入Fire方法内的有效性判断）
+				_token = null;
 
 				//启动新一轮的调度扫描
 				this.Scan();
@@ -492,7 +516,7 @@ namespace Zongsoft.Scheduling
 
 				//激发“Occurred”事件
 				this.OnOccurred(count);
-			}, schedules, _cancellation.Token);
+			}, schedules, current.GetToken());
 
 			try
 			{
@@ -557,6 +581,60 @@ namespace Zongsoft.Scheduling
 		#endregion
 
 		#region 嵌套子类
+		private class TaskToken : IDisposable
+		{
+			#region 公共字段
+			public readonly DateTime Timestamp;
+			#endregion
+
+			#region 私有变量
+			private CancellationTokenSource _cancellation;
+			#endregion
+
+			#region 构造函数
+			public TaskToken(DateTime next)
+			{
+				this.Timestamp = next;
+				_cancellation = new CancellationTokenSource();
+			}
+			#endregion
+
+			public bool IsCancellationRequested
+			{
+				get
+				{
+					var cancellation = _cancellation;
+					return cancellation == null || cancellation.IsCancellationRequested;
+				}
+			}
+
+			#region 公共方法
+			public CancellationToken GetToken()
+			{
+				return _cancellation.Token;
+			}
+
+			public void Cancel()
+			{
+				var cancellation = _cancellation;
+
+				if(cancellation != null)
+					cancellation.Cancel();
+			}
+
+			public void Dispose()
+			{
+				var cancellation = Interlocked.Exchange(ref _cancellation, null);
+
+				if(cancellation != null)
+				{
+					_cancellation.Cancel();
+					_cancellation.Dispose();
+				}
+			}
+			#endregion
+		}
+
 		private struct ScheduleToken
 		{
 			#region 公共字段
