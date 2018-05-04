@@ -46,7 +46,7 @@ namespace Zongsoft.Scheduling
 		/// <remarks>通过<seealso cref="IHandlerContext.Failure"/>属性来确认当前处理完成是否为重试完成以及重试情况的信息。</remarks>
 		event EventHandler<HandledEventArgs> Handled;
 
-		/// <summary>表示一次处理执行完成的事件，该事件总是处于<seealso cref="Handled"/>事件之后。</summary>
+		/// <summary>表示一次处理执行完成的事件。</summary>
 		/// <remarks>即使一次处理执行中的所有处理器都调用失败，该事件也会发生。</remarks>
 		event EventHandler<OccurredEventArgs> Occurred;
 

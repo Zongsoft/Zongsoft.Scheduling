@@ -43,5 +43,11 @@ namespace Zongsoft.Scheduling
 		{
 			return new DateTime(timestamp.HasValue ? timestamp.Value.Ticks : DateTime.Now.Ticks, DateTimeKind.Utc);
 		}
+
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+		internal static TimeSpan GetDuration(DateTime timestamp)
+		{
+			return timestamp - (timestamp.Kind == DateTimeKind.Utc ? Utility.Now() : DateTime.Now);
+		}
 	}
 }

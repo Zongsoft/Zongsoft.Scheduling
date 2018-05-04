@@ -48,6 +48,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="RetriedEventArgs.cs" />
     <Compile Include="Retriever.cs" />
     <Compile Include="HandledEventArgs.cs" />
     <Compile Include="HandlerContext.cs" />

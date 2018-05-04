@@ -32,17 +32,17 @@
  */
 
 using System;
-using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Concurrent;
 
 namespace Zongsoft.Scheduling
 {
 	public class Retriever : IRetriever
 	{
 		#region 事件定义
-		public event EventHandler<HandledEventArgs> Failed;
-		public event EventHandler<HandledEventArgs> Succeed;
+		public event EventHandler<RetriedEventArgs> Failed;
+		public event EventHandler<RetriedEventArgs> Succeed;
 		#endregion
 
 		#region 成员字段
@@ -170,7 +170,8 @@ namespace Zongsoft.Scheduling
 						continue;
 					}
 
-					var isFailed = false;
+					//定义重试失败的异常
+					Exception exception = null;
 
 					try
 					{
@@ -180,10 +181,10 @@ namespace Zongsoft.Scheduling
 						//调用处理器的处理方法
 						token.Handler.Handle(token.Context);
 					}
-					catch
+					catch(Exception ex)
 					{
-						//标示重试失败
-						isFailed = true;
+						//表示重试失败
+						exception = ex;
 
 						//将重试失败的句柄重新入队
 						_queue.Enqueue(token);
@@ -199,10 +200,10 @@ namespace Zongsoft.Scheduling
 					token.Context.Failure = new HandlerFailure(token.RetriedCount, token.RetriedTimestamp, token.Expiration);
 
 					//激发重试失败或成功的事件
-					if(isFailed)
-						this.OnFailed(token.Handler, token.Context);
-					else
+					if(exception == null)
 						this.OnSucceed(token.Handler, token.Context);
+					else
+						this.OnFailed(token.Handler, token.Context, exception);
 				}
 			}
 		}
@@ -216,10 +217,10 @@ namespace Zongsoft.Scheduling
 				return null;
 
 			//计算距离下次触发的间隔时长
-			var duration = timestamp.Value - (timestamp.Value.Kind == DateTimeKind.Utc ? Utility.Now() : DateTime.Now);
+			var duration = Utility.GetDuration(timestamp.Value);
 
 			//如果下次触发时间还小于当前，则返回下次触发时间为限制时
-			if(duration < TimeSpan.Zero)
+			if(duration <= TimeSpan.Zero )
 				return timestamp;
 
 			if(duration.TotalDays > 1) //如果大于1天，则按每天递减1小时，递减量最多不超过24小时
@@ -237,20 +238,14 @@ namespace Zongsoft.Scheduling
 		#endregion
 
 		#region 激发事件
-		protected virtual void OnFailed(IHandler handler, IHandlerContext context)
+		protected virtual void OnFailed(IHandler handler, IHandlerContext context, Exception exception)
 		{
-			var e = this.Failed;
-
-			if(e != null)
-				Task.Run(() => e(this, new HandledEventArgs(handler, context)));
+			this.Failed?.BeginInvoke(this, new RetriedEventArgs(handler, context, exception), null, null);
 		}
 
 		protected virtual void OnSucceed(IHandler handler, IHandlerContext context)
 		{
-			var e = this.Succeed;
-
-			if(e != null)
-				Task.Run(() => e(this, new HandledEventArgs(handler, context)));
+			this.Succeed?.BeginInvoke(this, new RetriedEventArgs(handler, context), null, null);
 		}
 		#endregion
 
@@ -266,7 +261,7 @@ namespace Zongsoft.Scheduling
 		private DateTime? GetLatency(RetryingToken token)
 		{
 			//如果待重试的处理器重试期限已过，则返回空（即忽略它）
-			if(token.Expiration.HasValue && token.Expiration < DateTime.Now)
+			if(token.Expiration.HasValue && token.Expiration.Value < DateTime.Now)
 				return null;
 
 			//如果重试次数为零或最后重试时间为空则返回当前时间（即不需要延迟）

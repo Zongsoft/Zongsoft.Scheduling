@@ -36,66 +36,23 @@ using System.Collections.Generic;
 
 namespace Zongsoft.Scheduling
 {
-	public class HandlerContext : IHandlerContext
+	public class RetriedEventArgs : HandledEventArgs
 	{
-		#region 成员字段
-		private IDictionary<string, object> _parameters;
-		#endregion
-
 		#region 构造函数
-		public HandlerContext(IScheduler scheduler, ITrigger trigger, string scheduleId, int index)
+		public RetriedEventArgs(IHandler handler, IHandlerContext context, Exception exception = null) : base(handler, context)
 		{
-			this.Index = index;
-			this.ScheduleId = scheduleId;
-			this.Scheduler = scheduler ?? throw new ArgumentNullException(nameof(scheduler));
-			this.Trigger = trigger ?? throw new ArgumentNullException(nameof(trigger));
+			this.Exception = exception;
 		}
 		#endregion
 
 		#region 公共属性
-		public int Index
+		/// <summary>
+		/// 获取重试失败的异常。
+		/// </summary>
+		public Exception Exception
 		{
 			get;
-		}
-
-		public string ScheduleId
-		{
-			get;
-		}
-
-		public HandlerFailure? Failure
-		{
-			get;
-			set;
-		}
-
-		public IScheduler Scheduler
-		{
-			get;
-		}
-
-		public ITrigger Trigger
-		{
-			get;
-		}
-
-		public bool HasParameters
-		{
-			get
-			{
-				return _parameters != null && _parameters.Count > 0;
-			}
-		}
-
-		public IDictionary<string, object> Parameters
-		{
-			get
-			{
-				if(_parameters == null)
-					System.Threading.Interlocked.CompareExchange(ref _parameters, new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase), null);
-
-				return _parameters;
-			}
+			internal protected set;
 		}
 		#endregion
 	}

@@ -42,10 +42,10 @@ namespace Zongsoft.Scheduling
 	{
 		#region 事件定义
 		/// <summary>表示重试失败的事件。</summary>
-		event EventHandler<HandledEventArgs> Failed;
+		event EventHandler<RetriedEventArgs> Failed;
 
 		/// <summary>表示重试成功的事件。</summary>
-		event EventHandler<HandledEventArgs> Succeed;
+		event EventHandler<RetriedEventArgs> Succeed;
 		#endregion
 
 		#region 方法定义

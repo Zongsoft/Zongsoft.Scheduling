@@ -50,6 +50,14 @@ namespace Zongsoft.Scheduling
 		}
 
 		/// <summary>
+		/// 获取调度任务编号。
+		/// </summary>
+		string ScheduleId
+		{
+			get;
+		}
+
+		/// <summary>
 		/// 获取处理失败的扩展信息。
 		/// </summary>
 		HandlerFailure? Failure
