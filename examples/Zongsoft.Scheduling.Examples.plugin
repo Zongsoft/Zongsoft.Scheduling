@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+
+<plugin name="Zongsoft.Scheduling.Examples" version="1.0"
+				title="Zongsoft.Scheduling Examples Plugin"
+				author="Popeye Zhong(zongsoft@qq.com)"
+				description="Created date:2018-May-5 by Popeye Zhong">
+	<manifest>
+		<assemblies>
+			<assembly name="Zongsoft.Scheduling.Examples" />
+		</assemblies>
+
+		<dependencies>
+			<dependency name="Zongsoft.Scheduling" />
+		</dependencies>
+	</manifest>
+
+	<extension path="/Workbench/Scheduling">
+		<!-- 挂载任务计划调度器 -->
+		<object name="MyScheduler" type="Zongsoft.Scheduling.Examples.MyScheduler, Zongsoft.Scheduling.Examples" />
+	</extension>
+
+	<!-- 开始调度器注入：因为成员解析的代码问题，采用如下非常绕的方式临时解决Scheduler命令的调度器注入 -->
+	<extension path="/Workbench">
+		<object name="SchedulerCommand" value="{path:/Workbench/Executor/Commands/Scheduler.Command}" />
+	</extension>
+
+	<extension path="/Workbench">
+		<schedulerCommand.scheduler>
+			<object value="{path:/Workbench/Scheduling/MyScheduler}" />
+		</schedulerCommand.scheduler>
+	</extension>
+	<!-- 完成调度器注入 -->
+
+	<extension path="/Workbench/Startup">
+		<object name="MyScheduler" value="{path:/Workbench/Scheduling/MyScheduler}" />
+	</extension>
+</plugin>

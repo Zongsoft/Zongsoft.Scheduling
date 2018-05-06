@@ -1,0 +1,3 @@
+./Zongsoft.Scheduling.Examples.option
+./Zongsoft.Scheduling.Examples.plugin
+./bin/$(Edition)/Zongsoft.Scheduling.Examples.*
