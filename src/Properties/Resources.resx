@@ -117,23 +117,20 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Scheduler.Counting" xml:space="preserve">
-    <value>总计 {0} 个触发器，{1} 个处理器。</value>
+  <data name="Retriever.Failed.Name" xml:space="preserve">
+    <value>重试失败</value>
   </data>
-  <data name="Scheduler.Handled" xml:space="preserve">
-    <value>[{0}] {1}@{2} 处理完成  {3}</value>
+  <data name="Retriever.Succeed.Name" xml:space="preserve">
+    <value>重试成功</value>
   </data>
-  <data name="Scheduler.LastTime" xml:space="preserve">
-    <value>最近执行时间：{0}</value>
+  <data name="Scheduler.Handled.Failed" xml:space="preserve">
+    <value>处理失败</value>
   </data>
-  <data name="Scheduler.Listen.ToExit.Prompt" xml:space="preserve">
-    <value>提示：按 Ctrl+C 键可退出侦听模式。</value>
+  <data name="Scheduler.Handled.Succeed" xml:space="preserve">
+    <value>处理成功</value>
   </data>
-  <data name="Scheduler.Listen.Welcome" xml:space="preserve">
-    <value>进入 {0} 调度器侦听模式。</value>
-  </data>
-  <data name="Scheduler.NextTime" xml:space="preserve">
-    <value>下次执行时间：{0}</value>
+  <data name="Scheduler.Handlers" xml:space="preserve">
+    <value>执行处理器：{0}</value>
   </data>
   <data name="Scheduler.NoLastTime" xml:space="preserve">
     <value>未执行过</value>
@@ -141,28 +138,19 @@
   <data name="Scheduler.NoNextTime" xml:space="preserve">
     <value>不再执行</value>
   </data>
-  <data name="Scheduler.Occurred" xml:space="preserve">
-    <value>执行完成，累计 {0} 个处理器被调用。</value>
+  <data name="Scheduler.Occurred.Name" xml:space="preserve">
+    <value>触发完成</value>
   </data>
-  <data name="Scheduler.Retry.Counting" xml:space="preserve">
-    <value>累计重试 {0} 次，最近一次：{1}</value>
+  <data name="Scheduler.Retry.NoExpiration" xml:space="preserve">
+    <value>无期限</value>
   </data>
-  <data name="Scheduler.Retry.Expiration" xml:space="preserve">
-    <value>截止于：{0}</value>
-  </data>
-  <data name="Scheduler.Retry.Failed" xml:space="preserve">
-    <value>重试失败：{0}@{1} 累计重试 {2) 次，最近一次：{3}</value>
-  </data>
-  <data name="Scheduler.Retry.First" xml:space="preserve">
+  <data name="Scheduler.Retry.NoTimestamp" xml:space="preserve">
     <value>首次重试</value>
   </data>
-  <data name="Scheduler.Retry.Succeed" xml:space="preserve">
-    <value>重试成功：</value>
+  <data name="Scheduler.Scheduled.Name" xml:space="preserve">
+    <value>排程完成</value>
   </data>
-  <data name="Scheduler.Retry.Unlimited" xml:space="preserve">
-    <value>*无重试期限*</value>
-  </data>
-  <data name="Scheduler.Scheduled" xml:space="preserve">
-    <value>调度完成，累计 {0} 个处理被调度，触发器列表：</value>
+  <data name="Scheduler.Triggers" xml:space="preserve">
+    <value>调度触发器：{0}</value>
   </data>
 </root>

@@ -40,6 +40,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Commands\SchedulerCommand.cs" />
+    <Compile Include="Commands\SchedulerInfoCommand.cs" />
     <Compile Include="Commands\SchedulerListenCommand.cs" />
     <Compile Include="HandlerFailure.cs" />
     <Compile Include="IRetriever.cs" />
@@ -48,7 +49,6 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="RetriedEventArgs.cs" />
     <Compile Include="Retriever.cs" />
     <Compile Include="HandledEventArgs.cs" />
     <Compile Include="HandlerContext.cs" />

@@ -61,56 +61,47 @@ namespace Zongsoft.Scheduling.Properties {
         }
         
         /// <summary>
-        ///   查找类似 总计 {0} 个触发器，{1} 个处理器。 的本地化字符串。
+        ///   查找类似 重试失败 的本地化字符串。
         /// </summary>
-        internal static string Scheduler_Counting {
+        internal static string Retriever_Failed_Name {
             get {
-                return ResourceManager.GetString("Scheduler.Counting", resourceCulture);
+                return ResourceManager.GetString("Retriever.Failed.Name", resourceCulture);
             }
         }
         
         /// <summary>
-        ///   查找类似 [{0}] {1}@{2} 处理完成  {3} 的本地化字符串。
+        ///   查找类似 重试成功 的本地化字符串。
         /// </summary>
-        internal static string Scheduler_Handled {
+        internal static string Retriever_Succeed_Name {
             get {
-                return ResourceManager.GetString("Scheduler.Handled", resourceCulture);
+                return ResourceManager.GetString("Retriever.Succeed.Name", resourceCulture);
             }
         }
         
         /// <summary>
-        ///   查找类似 最近执行时间：{0} 的本地化字符串。
+        ///   查找类似 处理失败 的本地化字符串。
         /// </summary>
-        internal static string Scheduler_LastTime {
+        internal static string Scheduler_Handled_Failed {
             get {
-                return ResourceManager.GetString("Scheduler.LastTime", resourceCulture);
+                return ResourceManager.GetString("Scheduler.Handled.Failed", resourceCulture);
             }
         }
         
         /// <summary>
-        ///   查找类似 提示：按 Ctrl+C 键可退出侦听模式。 的本地化字符串。
+        ///   查找类似 处理成功 的本地化字符串。
         /// </summary>
-        internal static string Scheduler_Listen_ToExit_Prompt {
+        internal static string Scheduler_Handled_Succeed {
             get {
-                return ResourceManager.GetString("Scheduler.Listen.ToExit.Prompt", resourceCulture);
+                return ResourceManager.GetString("Scheduler.Handled.Succeed", resourceCulture);
             }
         }
         
         /// <summary>
-        ///   查找类似 进入 {0} 调度器侦听模式。 的本地化字符串。
+        ///   查找类似 执行处理器：{0} 的本地化字符串。
         /// </summary>
-        internal static string Scheduler_Listen_Welcome {
+        internal static string Scheduler_Handlers {
             get {
-                return ResourceManager.GetString("Scheduler.Listen.Welcome", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   查找类似 下次执行时间：{0} 的本地化字符串。
-        /// </summary>
-        internal static string Scheduler_NextTime {
-            get {
-                return ResourceManager.GetString("Scheduler.NextTime", resourceCulture);
+                return ResourceManager.GetString("Scheduler.Handlers", resourceCulture);
             }
         }
         
@@ -133,74 +124,47 @@ namespace Zongsoft.Scheduling.Properties {
         }
         
         /// <summary>
-        ///   查找类似 执行完成，累计 {0} 个处理器被调用。 的本地化字符串。
+        ///   查找类似 触发完成 的本地化字符串。
         /// </summary>
-        internal static string Scheduler_Occurred {
+        internal static string Scheduler_Occurred_Name {
             get {
-                return ResourceManager.GetString("Scheduler.Occurred", resourceCulture);
+                return ResourceManager.GetString("Scheduler.Occurred.Name", resourceCulture);
             }
         }
         
         /// <summary>
-        ///   查找类似 累计重试 {0} 次，最近一次：{1} 的本地化字符串。
+        ///   查找类似 无期限 的本地化字符串。
         /// </summary>
-        internal static string Scheduler_Retry_Counting {
+        internal static string Scheduler_Retry_NoExpiration {
             get {
-                return ResourceManager.GetString("Scheduler.Retry.Counting", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   查找类似 截止于：{0} 的本地化字符串。
-        /// </summary>
-        internal static string Scheduler_Retry_Expiration {
-            get {
-                return ResourceManager.GetString("Scheduler.Retry.Expiration", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   查找类似 重试失败：{0}@{1} 累计重试 {2) 次，最近一次：{3} 的本地化字符串。
-        /// </summary>
-        internal static string Scheduler_Retry_Failed {
-            get {
-                return ResourceManager.GetString("Scheduler.Retry.Failed", resourceCulture);
+                return ResourceManager.GetString("Scheduler.Retry.NoExpiration", resourceCulture);
             }
         }
         
         /// <summary>
         ///   查找类似 首次重试 的本地化字符串。
         /// </summary>
-        internal static string Scheduler_Retry_First {
+        internal static string Scheduler_Retry_NoTimestamp {
             get {
-                return ResourceManager.GetString("Scheduler.Retry.First", resourceCulture);
+                return ResourceManager.GetString("Scheduler.Retry.NoTimestamp", resourceCulture);
             }
         }
         
         /// <summary>
-        ///   查找类似 重试成功： 的本地化字符串。
+        ///   查找类似 排程完成 的本地化字符串。
         /// </summary>
-        internal static string Scheduler_Retry_Succeed {
+        internal static string Scheduler_Scheduled_Name {
             get {
-                return ResourceManager.GetString("Scheduler.Retry.Succeed", resourceCulture);
+                return ResourceManager.GetString("Scheduler.Scheduled.Name", resourceCulture);
             }
         }
         
         /// <summary>
-        ///   查找类似 *无重试期限* 的本地化字符串。
+        ///   查找类似 调度触发器：{0} 的本地化字符串。
         /// </summary>
-        internal static string Scheduler_Retry_Unlimited {
+        internal static string Scheduler_Triggers {
             get {
-                return ResourceManager.GetString("Scheduler.Retry.Unlimited", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   查找类似 调度完成，累计 {0} 个处理被调度，触发器列表： 的本地化字符串。
-        /// </summary>
-        internal static string Scheduler_Scheduled {
-            get {
-                return ResourceManager.GetString("Scheduler.Scheduled", resourceCulture);
+                return ResourceManager.GetString("Scheduler.Triggers", resourceCulture);
             }
         }
     }

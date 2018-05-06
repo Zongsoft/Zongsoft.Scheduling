@@ -42,10 +42,10 @@ namespace Zongsoft.Scheduling
 	{
 		#region 事件定义
 		/// <summary>表示重试失败的事件。</summary>
-		event EventHandler<RetriedEventArgs> Failed;
+		event EventHandler<HandledEventArgs> Failed;
 
 		/// <summary>表示重试成功的事件。</summary>
-		event EventHandler<RetriedEventArgs> Succeed;
+		event EventHandler<HandledEventArgs> Succeed;
 		#endregion
 
 		#region 方法定义
@@ -65,10 +65,11 @@ namespace Zongsoft.Scheduling
 		/// </summary>
 		/// <param name="handler">指定要重试的处理器。</param>
 		/// <param name="context">指定要重试的处理上下文对象。</param>
+		/// <param name="exception">指定导致要重试的异常。</param>
 		/// <remarks>
 		///		<para>该方法会自动触发启动操作。</para>
 		/// </remarks>
-		void Retry(IHandler handler, IHandlerContext context);
+		void Retry(IHandler handler, IHandlerContext context, Exception exception = null);
 		#endregion
 	}
 }

@@ -33,6 +33,8 @@
 
 using System;
 
+using Zongsoft.Services;
+
 namespace Zongsoft.Scheduling.Commands
 {
 	public class SchedulerCommand : Zongsoft.Services.Commands.WorkerCommandBase
@@ -58,6 +60,32 @@ namespace Zongsoft.Scheduling.Commands
 			{
 				this.Worker = value;
 			}
+		}
+		#endregion
+
+		#region 静态方法
+		/// <summary>
+		/// 获取指定调度器的基本信息内容。
+		/// </summary>
+		/// <param name="scheduler">指定要获取的调度器对象。</param>
+		/// <param name="includeState">指定是否要包含调度器的状态信息。</param>
+		/// <returns>返回生成的调度器基本信息的内容。</returns>
+		public static CommandOutletContent GetInfo(IScheduler scheduler, bool includeState)
+		{
+			var content = CommandOutletContent.Create(CommandOutletColor.DarkCyan, scheduler.Name + " ")
+				.Append(CommandOutletColor.DarkGray, "(")
+				.Append(CommandOutletColor.Cyan, $"{scheduler.Triggers.Count}, {scheduler.Handlers.Count}")
+				.Append(CommandOutletColor.DarkGray, ") ")
+				.Append(CommandOutletColor.DarkYellow,      //最近执行时间
+					scheduler.LastTime.HasValue ? "(" + scheduler.LastTime.Value.ToString() + ")" : Properties.Resources.Scheduler_NoLastTime)
+				.Append(CommandOutletColor.DarkCyan, " ~ ")
+				.Append(CommandOutletColor.DarkYellow,  //下次执行时间
+					scheduler.NextTime.HasValue ? "(" + scheduler.NextTime.Value.ToString() + ")" : Properties.Resources.Scheduler_NoNextTime);
+
+			if(includeState)
+				return content.Prepend(GetStateColor(scheduler), $"[{scheduler.State}] ");
+
+			return content;
 		}
 		#endregion
 	}

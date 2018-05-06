@@ -69,9 +69,7 @@ namespace Zongsoft.Scheduling
 			_handlers = new HashSet<IHandler>();
 			_schedules = new ConcurrentDictionary<ITrigger, ScheduleToken>(TriggerComparer.Instance);
 			_triggers = new TriggerCollection(_schedules);
-
 			_retriever = new Retriever();
-			_retriever.Succeed += Retriever_Retried;
 		}
 		#endregion
 
@@ -98,21 +96,17 @@ namespace Zongsoft.Scheduling
 			{
 				return _retriever;
 			}
-			[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.Synchronized)]
 			set
 			{
 				if(value == null)
 					throw new ArgumentNullException();
 
+				//如果新值与原有值引用相等则忽略
 				if(object.ReferenceEquals(_retriever, value))
 					return;
 
-				//保存原有重试器
-				var original = _retriever;
-
-				_retriever.Succeed -= Retriever_Retried;
-				_retriever = value;
-				_retriever.Succeed += Retriever_Retried;
+				//更新属性值
+				var original = Interlocked.Exchange(ref _retriever, value);
 
 				//通知子类该属性值发生了改变
 				this.OnRetrieverChanged(value, original);
@@ -403,19 +397,19 @@ namespace Zongsoft.Scheduling
 		#endregion
 
 		#region 激发事件
-		protected virtual void OnHandled(IHandler handler, IHandlerContext context)
+		protected virtual void OnHandled(IHandler handler, IHandlerContext context, Exception exception)
 		{
-			this.Handled?.BeginInvoke(this, new HandledEventArgs(handler, context), null, null);
+			this.Handled?.Invoke(this, new HandledEventArgs(handler, context, exception));
 		}
 
 		protected virtual void OnOccurred(string scheduleId, int count)
 		{
-			this.Occurred?.BeginInvoke(this, new OccurredEventArgs(scheduleId, count), null, null);
+			this.Occurred?.Invoke(this, new OccurredEventArgs(scheduleId, count));
 		}
 
 		protected virtual void OnScheduled(string scheduleId, int count, ITrigger[] triggers)
 		{
-			this.Scheduled?.BeginInvoke(this, new ScheduledEventArgs(scheduleId, count, triggers), null, null);
+			this.Scheduled?.Invoke(this, new ScheduledEventArgs(scheduleId, count, triggers));
 		}
 		#endregion
 
@@ -523,12 +517,8 @@ namespace Zongsoft.Scheduling
 						//创建处理上下文对象
 						var context = new HandlerContext(this, schedule.Trigger, token.Identity, count++);
 
-						//调用处理器进行处理（该方法内会屏蔽异常，并对执行异常的处理器进行重发处理），其返回真则表示执行成功
-						if(this.Handle(handler, context))
-						{
-							//激发“Handled”事件
-							this.OnHandled(handler, context);
-						}
+						Task.Run(() => this.Handle(handler, context))//异步调用处理器进行处理（该方法内会屏蔽异常，并对执行异常的处理器进行重发处理）
+						.ContinueWith(t => this.OnHandled(handler, context, t.Result)); //异步调用处理器完成后，再激发“Handled”事件
 					}
 				}
 
@@ -547,7 +537,7 @@ namespace Zongsoft.Scheduling
 			}
 		}
 
-		private bool Handle(IHandler handler, IHandlerContext context)
+		private Exception Handle(IHandler handler, IHandlerContext context)
 		{
 			try
 			{
@@ -555,18 +545,15 @@ namespace Zongsoft.Scheduling
 				handler.Handle(context);
 
 				//返回调用成功
-				return true;
+				return null;
 			}
 			catch(Exception ex)
 			{
-				//打印异常日志
-				Zongsoft.Diagnostics.Logger.Error(ex);
-
 				//将失败的处理器加入到重试队列中
-				_retriever.Retry(handler, context);
+				_retriever.Retry(handler, context, ex);
 
 				//返回调用失败
-				return false;
+				return ex;
 			}
 		}
 
@@ -588,13 +575,6 @@ namespace Zongsoft.Scheduling
 
 			//返回默认失败
 			return false;
-		}
-		#endregion
-
-		#region 重试处理
-		private void Retriever_Retried(object sender, HandledEventArgs e)
-		{
-			this.OnHandled(e.Handler, e.Context);
 		}
 		#endregion
 

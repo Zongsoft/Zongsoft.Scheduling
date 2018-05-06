@@ -36,7 +36,6 @@ using System.Threading;
 
 using Zongsoft.Common;
 using Zongsoft.Services;
-using Zongsoft.Terminals;
 
 namespace Zongsoft.Scheduling.Commands
 {
@@ -74,7 +73,7 @@ namespace Zongsoft.Scheduling.Commands
 			base.OnListening(context, worker);
 
 			//打印基本信息
-			this.PrintInfo(scheduler);
+			context.Output.WriteLine(SchedulerCommand.GetInfo(scheduler, true).AppendLine());
 		}
 
 		protected override void OnListened(CommandContext context, IWorker worker)
@@ -99,119 +98,158 @@ namespace Zongsoft.Scheduling.Commands
 		#region 事件处理
 		private void Scheduler_Handled(object sender, HandledEventArgs e)
 		{
-			var extra = string.Empty;
+			//根据处理完成事件参数来设置标志名
+			var name = e.Exception == null ? Properties.Resources.Scheduler_Handled_Succeed : Properties.Resources.Scheduler_Handled_Failed;
 
-			if(e.Context.Failure.HasValue)
-			{
-				if(e.Context.Failure.Value.Count == 0 || e.Context.Failure.Value.Timestamp == null)
-					extra = Properties.Resources.Scheduler_Retry_First;
-				else
-					extra = string.Format(Properties.Resources.Scheduler_Retry_Counting, e.Context.Failure.Value.Count, e.Context.Failure.Value.Expiration.Value);
+			//获取处理完成的事件信息内容
+			var content = this.GetHandledContent(name, e);
 
-				if(e.Context.Failure.Value.Expiration.HasValue)
-					extra += " " + string.Format(Properties.Resources.Scheduler_Retry_Expiration, e.Context.Failure.Value.Expiration.Value);
-				else
-					extra += " " + Properties.Resources.Scheduler_Retry_Unlimited;
-			}
-
-			this.Context.Output.WriteLine(CommandOutletColor.Green,
-				string.Format(Properties.Resources.Scheduler_Handled, e.Context.Index, e.Handler, e.Context.Trigger, extra));
+			//输出事件信息内容
+			this.Context.Output.WriteLine(content);
 		}
 
 		private void Scheduler_Occurred(object sender, OccurredEventArgs e)
 		{
-			this.Context.Output.WriteLine(CommandOutletColor.Magenta, Properties.Resources.Scheduler_Occurred, e.Count);
-			this.Context.Output.WriteLine(this.GetMessage(sender as IScheduler));
+			//获取调度器的基本信息内容（不需包含状态信息）
+			var content = SchedulerCommand.GetInfo((IScheduler)sender, false);
+
+			content.Prepend(Properties.Resources.Scheduler_Occurred_Name)
+				.After(CommandOutletColor.DarkGray, "(")
+				.After(CommandOutletColor.DarkCyan, e.ScheduleId)
+				.After(CommandOutletColor.DarkGray, "): ")
+				.After(CommandOutletColor.Magenta, e.Count.ToString() + " ");
+
+			this.Context.Output.WriteLine(content.First);
 		}
 
 		private void Scheduler_Scheduled(object sender, ScheduledEventArgs e)
 		{
-			var message = string.Format(Properties.Resources.Scheduler_Scheduled, e.Count) + Environment.NewLine;
+			//获取调度器的基本信息内容（不需包含状态信息）
+			var content = SchedulerCommand.GetInfo((IScheduler)sender, false);
 
-			for(int i = 0; i < e.Triggers.Length; i++)
+			content.Prepend(Properties.Resources.Scheduler_Scheduled_Name)
+				.After(CommandOutletColor.DarkGray, "(")
+				.After(CommandOutletColor.DarkCyan, e.ScheduleId)
+				.After(CommandOutletColor.DarkGray, "): ")
+				.After(CommandOutletColor.Magenta, e.Count.ToString() + " ");
+
+			if(e.Triggers != null && e.Triggers.Length > 0)
 			{
-				message += $"[{i + 1}] {e.Triggers[i]}" + Environment.NewLine;
+				content.AppendLine();
+
+				for(int i = 0; i < e.Triggers.Length; i++)
+				{
+					content.Append(CommandOutletColor.DarkYellow, $"[{i + 1}] ")
+					       .AppendLine(e.Triggers[i].ToString());
+				}
 			}
 
-			this.Context.Output.WriteLine(CommandOutletColor.DarkGreen, message);
-			this.Context.Output.WriteLine(this.GetMessage(sender as IScheduler));
+			this.Context.Output.WriteLine(content.First);
 		}
 
 		private void Retriever_Failed(object sender, HandledEventArgs e)
 		{
-			Console.Beep();
+			//获取重试失败的事件信息内容
+			var content = this.GetHandledContent(Properties.Resources.Retriever_Failed_Name, e);
 
-			var extra = string.Empty;
-
-			if(e.Context.Failure.Value.Expiration == null)
-				extra = Properties.Resources.Scheduler_Retry_Unlimited;
-			else
-				extra = string.Format(Properties.Resources.Scheduler_Retry_Expiration, e.Context.Failure.Value.Expiration.Value);
-
-			var message = string.Format(Properties.Resources.Scheduler_Retry_Failed,
-				e.Handler,
-				e.Trigger,
-				e.Context.Failure.Value.Count,
-				e.Context.Failure.Value.Timestamp);
-
-			this.Context.Output.WriteLine(CommandOutletColor.Red, $"{message}\t {extra}");
+			//输出事件信息内容
+			this.Context.Output.WriteLine(content);
 		}
 
 		private void Retriever_Succeed(object sender, HandledEventArgs e)
 		{
-			//_outlet.Write(CommandOutletColor.Green, Properties.Resources.Scheduler_Retry_Succeed);
+			//获取重试成功的事件信息内容
+			var content = this.GetHandledContent(Properties.Resources.Retriever_Succeed_Name, e);
+
+			//输出事件信息内容
+			this.Context.Output.WriteLine(content);
 		}
 		#endregion
 
 		#region 私有方法
-		private void PrintWelcome(IScheduler scheduler)
+		private CommandOutletContent GetHandledContent(string name, HandledEventArgs args)
 		{
-			this.Context.Output.WriteLine(Properties.Resources.Scheduler_Listen_Welcome, scheduler.Name);
-			this.Context.Output.WriteLine(CommandOutletColor.DarkYellow, Properties.Resources.Scheduler_Listen_ToExit_Prompt + Environment.NewLine);
-		}
+			var content = CommandOutletContent.Create(name)
+				.Append(CommandOutletColor.DarkGray, "(")
+				.Append(CommandOutletColor.DarkCyan, args.Context.ScheduleId.ToString())
+				.Append(CommandOutletColor.DarkGray, "): ")
+				.Append(CommandOutletColor.DarkYellow, $"[{args.Context.Index + 1}] ")
+				.Append(CommandOutletColor.DarkCyan, args.Handler.ToString())
+				.Append(CommandOutletColor.DarkGray, "@")
+				.Append(CommandOutletColor.DarkMagenta, args.Context.Trigger.ToString());
 
-		private void PrintInfo(IScheduler scheduler)
-		{
-			var state = this.GetState(scheduler, out var color);
-			var message = this.GetMessage(scheduler);
-
-			this.Context.Output.Write(color, state);
-			this.Context.Output.WriteLine(message + Environment.NewLine);
-		}
-
-		private string GetState(IScheduler scheduler, out CommandOutletColor color)
-		{
-			var state = scheduler.State;
-
-			switch(state)
+			if(args.Context.Failure.HasValue)
 			{
-				case WorkerState.Pausing:
-				case WorkerState.Paused:
-					color = CommandOutletColor.DarkYellow;
-					break;
-				case WorkerState.Resuming:
-				case WorkerState.Starting:
-					color = CommandOutletColor.DarkGreen;
-					break;
-				case WorkerState.Stopped:
-				case WorkerState.Stopping:
-					color = CommandOutletColor.Gray;
-					break;
-				default:
-					color = CommandOutletColor.Green;
-					break;
+				var failure = args.Context.Failure.Value;
+
+				//为重试信息添加起始标记
+				content.Append(CommandOutletColor.Gray, " {");
+
+				if(failure.Count > 0 && failure.Timestamp.HasValue)
+				{
+					content.Append(CommandOutletColor.DarkYellow, "#");
+					content.Append(CommandOutletColor.DarkRed, failure.Count.ToString());
+					content.Append(CommandOutletColor.DarkYellow, "#");
+
+					content.Append(CommandOutletColor.DarkGray, " (");
+					content.Append(CommandOutletColor.DarkRed, failure.Timestamp.HasValue ? failure.Timestamp.ToString() : Properties.Resources.Scheduler_Retry_NoTimestamp);
+					content.Append(CommandOutletColor.DarkGray, ")");
+				}
+
+				if(failure.Expiration.HasValue)
+				{
+					content.Append(CommandOutletColor.Red, " < ");
+					content.Append(CommandOutletColor.DarkGray, "(");
+					content.Append(CommandOutletColor.DarkMagenta, failure.Expiration.HasValue ? failure.Expiration.ToString() : Properties.Resources.Scheduler_Retry_NoExpiration);
+					content.Append(CommandOutletColor.DarkGray, ")");
+				}
+
+				//为重试信息添加结束标记
+				content.Append(CommandOutletColor.Gray, "}");
 			}
 
-			return $"[{state}] ";
+			if(args.Exception != null)
+			{
+				//设置名称内容端的文本颜色为红色
+				content.First.Color = CommandOutletColor.Red;
+
+				content.AppendLine()
+				       .Append(this.GetExceptionContent(args.Exception));
+			}
+
+			return content;
 		}
 
-		private string GetMessage(IScheduler scheduler)
+		private CommandOutletContent GetExceptionContent(Exception exception)
 		{
-			var lastTime = scheduler.LastTime.HasValue ? string.Format(Properties.Resources.Scheduler_LastTime, scheduler.LastTime.Value.ToString()) : Properties.Resources.Scheduler_NoLastTime;
-			var nextTime = scheduler.NextTime.HasValue ? string.Format(Properties.Resources.Scheduler_NextTime, scheduler.NextTime.Value.ToString()) : Properties.Resources.Scheduler_NoNextTime;
+			if(exception == null)
+				return null;
 
-			return string.Format(Properties.Resources.Scheduler_Counting, scheduler.Triggers.Count, scheduler.Handlers.Count) +
-			       " | " + lastTime + " | " + nextTime + Environment.NewLine;
+			//哔哔一下
+			Console.Beep();
+
+			//为异常信息添加起始标记
+			var content = CommandOutletContent.Create(CommandOutletColor.Gray, "{" + Environment.NewLine);
+
+			while(exception != null)
+			{
+				content.Append(CommandOutletColor.Red, "    " + exception.GetType().FullName);
+
+				if(!string.IsNullOrEmpty(exception.Source))
+				{
+					content.Append(CommandOutletColor.DarkGray, "(")
+					       .Append(CommandOutletColor.DarkYellow, exception.Source)
+					       .Append(CommandOutletColor.DarkGray, ")");
+				}
+
+				content.Append(CommandOutletColor.DarkGray, ": ")
+				       .AppendLine(exception.Message.Replace('\r', ' ').Replace('\n', ' '));
+
+				exception = exception.InnerException;
+			}
+
+			//为异常信息添加结束标记
+			return content.Append(CommandOutletColor.Gray, "}");
 		}
 		#endregion
 	}

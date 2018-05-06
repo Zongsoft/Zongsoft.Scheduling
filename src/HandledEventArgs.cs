@@ -39,10 +39,11 @@ namespace Zongsoft.Scheduling
 	public class HandledEventArgs : EventArgs
 	{
 		#region 构造函数
-		public HandledEventArgs(IHandler handler, IHandlerContext context)
+		public HandledEventArgs(IHandler handler, IHandlerContext context, Exception exception)
 		{
 			this.Handler = handler;
 			this.Context = context;
+			this.Exception = exception;
 		}
 		#endregion
 
@@ -61,6 +62,11 @@ namespace Zongsoft.Scheduling
 		}
 
 		public IHandlerContext Context
+		{
+			get;
+		}
+
+		public Exception Exception
 		{
 			get;
 		}

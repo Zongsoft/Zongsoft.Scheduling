@@ -41,8 +41,8 @@ namespace Zongsoft.Scheduling
 	public class Retriever : IRetriever
 	{
 		#region 事件定义
-		public event EventHandler<RetriedEventArgs> Failed;
-		public event EventHandler<RetriedEventArgs> Succeed;
+		public event EventHandler<HandledEventArgs> Failed;
+		public event EventHandler<HandledEventArgs> Succeed;
 		#endregion
 
 		#region 成员字段
@@ -121,13 +121,13 @@ namespace Zongsoft.Scheduling
 			}
 		}
 
-		public void Retry(IHandler handler, IHandlerContext context)
+		public void Retry(IHandler handler, IHandlerContext context, Exception exception)
 		{
 			//获取下次触发的时间点
 			var expiration = context.Trigger.GetNextOccurrence();
 
 			//将处理器加入到重试队列
-			_queue.Enqueue(new RetryingToken(handler, context, this.GetExpiration(handler, context, expiration)));
+			_queue.Enqueue(new RetryingToken(handler, context, this.GetExpiration(handler, context, expiration), exception));
 
 			//如果取消源为空（未启动过重试任务）或已经被取消（即重试任务被中断），则应该重启重试任务
 			if(_cancellation == null || _cancellation.IsCancellationRequested)
@@ -170,8 +170,8 @@ namespace Zongsoft.Scheduling
 						continue;
 					}
 
-					//定义重试失败的异常
-					Exception exception = null;
+					//定义重试失败的标记
+					var isFailed = false;
 
 					try
 					{
@@ -180,11 +180,17 @@ namespace Zongsoft.Scheduling
 
 						//调用处理器的处理方法
 						token.Handler.Handle(token.Context);
+
+						//将最新失败异常置空
+						token.Exception = null;
 					}
 					catch(Exception ex)
 					{
 						//表示重试失败
-						exception = ex;
+						isFailed = true;
+
+						//更新最新的失败异常
+						token.Exception = ex;
 
 						//将重试失败的句柄重新入队
 						_queue.Enqueue(token);
@@ -200,10 +206,10 @@ namespace Zongsoft.Scheduling
 					token.Context.Failure = new HandlerFailure(token.RetriedCount, token.RetriedTimestamp, token.Expiration);
 
 					//激发重试失败或成功的事件
-					if(exception == null)
-						this.OnSucceed(token.Handler, token.Context);
+					if(isFailed)
+						this.OnFailed(token.Handler, token.Context, token.Exception);
 					else
-						this.OnFailed(token.Handler, token.Context, exception);
+						this.OnSucceed(token.Handler, token.Context);
 				}
 			}
 		}
@@ -240,12 +246,12 @@ namespace Zongsoft.Scheduling
 		#region 激发事件
 		protected virtual void OnFailed(IHandler handler, IHandlerContext context, Exception exception)
 		{
-			this.Failed?.BeginInvoke(this, new RetriedEventArgs(handler, context, exception), null, null);
+			this.Failed?.Invoke(this, new HandledEventArgs(handler, context, exception));
 		}
 
 		protected virtual void OnSucceed(IHandler handler, IHandlerContext context)
 		{
-			this.Succeed?.BeginInvoke(this, new RetriedEventArgs(handler, context), null, null);
+			this.Succeed?.Invoke(this, new HandledEventArgs(handler, context, null));
 		}
 		#endregion
 
@@ -287,12 +293,14 @@ namespace Zongsoft.Scheduling
 			public DateTime? Expiration;
 			public DateTime? RetriedTimestamp;
 			public int RetriedCount;
+			public Exception Exception;
 
-			public RetryingToken(IHandler handler, IHandlerContext context, DateTime? expiration)
+			public RetryingToken(IHandler handler, IHandlerContext context, DateTime? expiration, Exception exception)
 			{
 				this.Handler = handler;
 				this.Context = context;
 				this.Expiration = expiration;
+				this.Exception = exception;
 			}
 		}
 		#endregion
