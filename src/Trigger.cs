@@ -55,25 +55,29 @@ namespace Zongsoft.Scheduling
 		#endregion
 
 		#region 静态方法
-		public static ITrigger Cron(string expression)
+		public static ITrigger Cron(string expression, DateTime? expiration = null, DateTime? effective = null)
 		{
 			if(string.IsNullOrWhiteSpace(expression))
 				return null;
 
-			return Get("cron", expression);
+			return Get("cron", expression, expiration, effective);
 		}
 
-		public static ITrigger Get(string scheme, string expression)
+		public static ITrigger Get(string scheme, string expression, DateTime? expiration = null, DateTime? effective = null)
 		{
 			if(string.IsNullOrWhiteSpace(scheme))
 				throw new ArgumentNullException(nameof(scheme));
 
 			scheme = scheme.Trim();
 
-			return _triggers.GetOrAdd((scheme + ":" + expression), key =>
+			var key = scheme + ":" + expression + "|" +
+				(expiration.HasValue ? expiration.Value.Ticks.ToString() : "?") + "-" +
+				(effective.HasValue ? effective.Value.Ticks.ToString() : "?");
+
+			return _triggers.GetOrAdd(key, _ =>
 			{
 				if(_builders.TryGetValue(scheme, out var builder))
-					return builder.Build(expression);
+					return builder.Build(expression, expiration, effective);
 
 				throw new InvalidProgramException($"The '{scheme}' trigger builder not found.");
 			});

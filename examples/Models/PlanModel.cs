@@ -71,6 +71,18 @@ namespace Zongsoft.Scheduling.Examples.Models
 			set;
 		}
 
+		public DateTime? EffectiveTime
+		{
+			get;
+			set;
+		}
+
+		public DateTime? ExpirationTime
+		{
+			get;
+			set;
+		}
+
 		public string CronExpression
 		{
 			get;

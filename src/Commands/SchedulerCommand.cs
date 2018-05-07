@@ -83,7 +83,7 @@ namespace Zongsoft.Scheduling.Commands
 					scheduler.NextTime.HasValue ? "(" + scheduler.NextTime.Value.ToString() + ")" : Properties.Resources.Scheduler_NoNextTime);
 
 			if(includeState)
-				return content.Prepend(GetStateColor(scheduler), $"[{scheduler.State}] ");
+				return content.Prepend(GetStateColor(scheduler.State), $"[{scheduler.State}] ");
 
 			return content;
 		}

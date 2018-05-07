@@ -78,7 +78,7 @@ namespace Zongsoft.Scheduling.Examples
 						continue;
 
 					//将指定任务计划加入到调度器中
-					this.Schedule(this.GetHandler(plan.PlanId), Trigger.Cron(plan.CronExpression));
+					this.Schedule(this.GetHandler(plan.PlanId), Trigger.Cron(plan.CronExpression, plan.ExpirationTime, plan.EffectiveTime));
 				}
 			});
 
@@ -93,27 +93,31 @@ namespace Zongsoft.Scheduling.Examples
 
 			for(int i = 0; i < count; i++)
 			{
-				switch(Common.RandomGenerator.GenerateInt32() % 5)
+				switch(Common.RandomGenerator.GenerateInt32() % 6)
 				{
 					case 0:
-						//每分钟整点来一发
+						//每分钟来一发
 						cron = "0 * * * * ?";
 						break;
 					case 1:
-						//每5分钟整点来一发
+						//每5分钟来一发
 						cron = "0 0/5 * * * ?";
 						break;
 					case 2:
-						//每10分钟整点来一发
+						//每10分钟来一发
 						cron = "0 0,10,20,30,40,50 * * * ?";
 						break;
 					case 3:
-						//每30分钟整点来一发
+						//每30分钟来一发
 						cron = "0 0,30 * * * ?";
 						break;
 					case 4:
-						//每2个小时整点来一发
+						//每2个小时来一发
 						cron = "0 0 0/2 * * ?";
+						break;
+					case 5:
+						//工作日（周一至周五）的每小时来一发
+						cron = "0 0 * ? * 1-5";
 						break;
 				}
 

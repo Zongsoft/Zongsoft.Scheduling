@@ -43,7 +43,10 @@ namespace Zongsoft.Scheduling
 	{
 		#region 事件声明
 		/// <summary>表示一个处理器执行完成的事件。</summary>
-		/// <remarks>通过<seealso cref="IHandlerContext.Failure"/>属性来确认当前处理完成是否为重试完成以及重试情况的信息。</remarks>
+		/// <remarks>
+		///		<para>可通过<seealso cref="HandledEventArgs.Exception"/>属性来确认最近一次处理是否成功。</para>
+		///		<para>可通过<seealso cref="IHandlerContext.Failure"/>属性来重试情况的信息。</para>
+		/// </remarks>
 		event EventHandler<HandledEventArgs> Handled;
 
 		/// <summary>表示一次处理执行完成的事件。</summary>
@@ -129,11 +132,39 @@ namespace Zongsoft.Scheduling
 		/// <returns>返回指定触发器中关联的处理器集。</returns>
 		IEnumerable<IHandler> GetHandlers(ITrigger trigger);
 
+		/// <summary>
+		/// 排程操作，将指定的处理器与触发器绑定。
+		/// </summary>
+		/// <param name="handler">指定要绑定的处理器。</param>
+		/// <param name="trigger">指定要调度的触发器。</param>
+		/// <returns>如果排程成功则返回真(True)，否则返回假(False)。</returns>
+		/// <remarks>同一个处理器不能多次绑定到同一个触发器。</remarks>
 		bool Schedule(IHandler handler, ITrigger trigger);
+
+		/// <summary>
+		/// 重新排程，将指定的处理器绑定到新的触发器并自动将其关联的原触发器解绑。
+		/// </summary>
+		/// <param name="handler">指定要绑定的处理器。</param>
+		/// <param name="trigger">指定要调度的新触发器。</param>
 		void Reschedule(IHandler handler, ITrigger trigger);
 
+		/// <summary>
+		/// 清空所有排程，即将调度器中的所有绑定关系解除。
+		/// </summary>
 		void Unschedule();
+
+		/// <summary>
+		/// 解除指定处理器的所有排程。
+		/// </summary>
+		/// <param name="handler">指定要解除的处理器。</param>
+		/// <returns>如果解除成功则返回真(True)，否则返回假(False)。</returns>
 		bool Unschedule(IHandler handler);
+
+		/// <summary>
+		/// 解除指定触发器的所有排程。
+		/// </summary>
+		/// <param name="trigger">指定要解除的触发器。</param>
+		/// <returns>如果解除成功则返回真(False)，否则返回假(False)。</returns>
 		bool Unschedule(ITrigger trigger);
 		#endregion
 	}

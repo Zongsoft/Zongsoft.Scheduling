@@ -47,28 +47,66 @@ namespace Zongsoft.Scheduling
 		#endregion
 
 		#region 私有构造
-		private CronTrigger(string expression)
+		private CronTrigger(string expression, DateTime? expiration = null, DateTime? effective = null)
 		{
 			_expression = Cronos.CronExpression.Parse(expression, Cronos.CronFormat.IncludeSeconds);
+
 			this.Expression = _expression.ToString();
+			this.ExpirationTime = expiration;
+			this.EffectiveTime = effective;
 		}
 		#endregion
 
 		#region 公共属性
+		/// <summary>
+		/// 获取触发器的Cron表达式。
+		/// </summary>
 		public string Expression
 		{
 			get;
+		}
+
+		/// <summary>
+		/// 获取或设置触发器的生效时间。
+		/// </summary>
+		public DateTime? EffectiveTime
+		{
+			get;
+			set;
+		}
+
+		/// <summary>
+		/// 获取或设置触发器的截止时间。
+		/// </summary>
+		public DateTime? ExpirationTime
+		{
+			get;
+			set;
 		}
 		#endregion
 
 		#region 公共方法
 		public DateTime? GetNextOccurrence(bool inclusive = false)
 		{
-			return _expression.GetNextOccurrence(this.Now(), inclusive);
+			var now = this.Now();
+
+			if(this.EffectiveTime.HasValue && now < this.EffectiveTime.Value)
+				return null;
+			if(this.ExpirationTime.HasValue && now > this.ExpirationTime.Value)
+				return null;
+
+			return _expression.GetNextOccurrence(now, inclusive);
 		}
 
 		public DateTime? GetNextOccurrence(DateTime origin, bool inclusive = false)
 		{
+			var now = this.Now(origin);
+
+			if(this.EffectiveTime.HasValue && now < this.EffectiveTime.Value)
+				return null;
+			if(this.ExpirationTime.HasValue && now > this.ExpirationTime.Value)
+				return null;
+
 			return _expression.GetNextOccurrence(this.Now(origin), inclusive);
 		}
 		#endregion
@@ -76,7 +114,10 @@ namespace Zongsoft.Scheduling
 		#region 重写方法
 		public bool Equals(ITrigger other)
 		{
-			return (other is CronTrigger cron) && cron._expression.Equals(_expression);
+			return (other is CronTrigger cron) &&
+				cron._expression.Equals(_expression) &&
+				this.EffectiveTime == other.EffectiveTime &&
+				this.ExpirationTime == other.ExpirationTime;
 		}
 
 		public override bool Equals(object obj)
@@ -86,12 +127,24 @@ namespace Zongsoft.Scheduling
 
 		public override int GetHashCode()
 		{
-			return _expression.GetHashCode();
+			var code = _expression.GetHashCode();
+
+			if(this.EffectiveTime.HasValue)
+				code ^= this.EffectiveTime.Value.GetHashCode();
+			if(this.ExpirationTime.HasValue)
+				code ^= this.ExpirationTime.Value.GetHashCode();
+
+			return code;
 		}
 
 		public override string ToString()
 		{
-			return "Cron: " + _expression.ToString();
+			if(this.EffectiveTime == null && this.ExpirationTime == null)
+				return "Cron: " + _expression.ToString();
+			else
+				return "Cron: " + _expression.ToString() + " (" +
+					(this.EffectiveTime.HasValue ? this.EffectiveTime.ToString() : "?") + " ~ " +
+					(this.ExpirationTime.HasValue ? this.ExpirationTime.ToString() : "?") + ")";
 		}
 		#endregion
 
@@ -106,12 +159,12 @@ namespace Zongsoft.Scheduling
 		#region 构建器类
 		private class CronTriggerBuilder : ITriggerBuilder
 		{
-			public ITrigger Build(string expression)
+			public ITrigger Build(string expression, DateTime? expiration = null, DateTime? effective = null)
 			{
 				if(string.IsNullOrWhiteSpace(expression))
 					throw new ArgumentNullException(nameof(expression));
 
-				return new CronTrigger(expression);
+				return new CronTrigger(expression, expiration, effective);
 			}
 		}
 		#endregion

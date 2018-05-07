@@ -37,6 +37,6 @@ namespace Zongsoft.Scheduling
 {
 	public interface ITriggerBuilder
 	{
-		ITrigger Build(string expression);
+		ITrigger Build(string expression, DateTime? expiration = null, DateTime? effective = null);
 	}
 }
