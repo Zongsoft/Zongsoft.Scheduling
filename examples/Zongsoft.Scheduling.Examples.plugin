@@ -19,17 +19,12 @@
 		<object name="MyScheduler" type="Zongsoft.Scheduling.Examples.MyScheduler, Zongsoft.Scheduling.Examples" />
 	</extension>
 
-	<!-- 开始调度器注入：因为成员解析的代码问题，采用如下非常绕的方式临时解决Scheduler命令的调度器注入 -->
-	<extension path="/Workbench">
-		<object name="SchedulerCommand" value="{path:/Workbench/Executor/Commands/Scheduler.Command}" />
-	</extension>
-
-	<extension path="/Workbench">
-		<schedulerCommand.scheduler>
+	<extension path="/Workbench/Executor/Commands">
+		<!-- 将调度器注入到调度命令的对应属性 -->
+		<scheduler.command.scheduler>
 			<object value="{path:/Workbench/Scheduling/MyScheduler}" />
-		</schedulerCommand.scheduler>
+		</scheduler.command.scheduler>
 	</extension>
-	<!-- 完成调度器注入 -->
 
 	<extension path="/Workbench/Startup">
 		<object name="MyScheduler" value="{path:/Workbench/Scheduling/MyScheduler}" />
