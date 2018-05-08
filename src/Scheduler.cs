@@ -515,7 +515,7 @@ namespace Zongsoft.Scheduling
 					foreach(var handler in schedule.Handlers)
 					{
 						//创建处理上下文对象
-						var context = new HandlerContext(this, schedule.Trigger, token.Identity, count++);
+						var context = new HandlerContext(this, schedule.Trigger, token.Identity, token.Timestamp, count++);
 
 						Task.Run(() => this.Handle(handler, context))//异步调用处理器进行处理（该方法内会屏蔽异常，并对执行异常的处理器进行重发处理）
 						.ContinueWith(t => this.OnHandled(handler, context, t.Result)); //异步调用处理器完成后，再激发“Handled”事件

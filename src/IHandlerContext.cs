@@ -58,6 +58,14 @@ namespace Zongsoft.Scheduling
 		}
 
 		/// <summary>
+		/// 获取任务首次调度的时间。
+		/// </summary>
+		DateTime Timestamp
+		{
+			get;
+		}
+
+		/// <summary>
 		/// 获取处理失败的扩展信息。
 		/// </summary>
 		HandlerFailure? Failure
