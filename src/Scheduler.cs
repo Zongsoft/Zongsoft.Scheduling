@@ -487,14 +487,18 @@ namespace Zongsoft.Scheduling
 			//获取延迟的时长
 			var duration = Utility.GetDuration(timestamp);
 
-			//防止延迟时长为负数
-			if(duration < TimeSpan.Zero)
-				duration = TimeSpan.Zero;
-
 			Task.Delay(duration).ContinueWith((task, state) =>
 			{
+				//获取当前的任务调度凭证
+				var token = (TaskToken)state;
+
+				//注意：防坑处理！！！
+				//任务线程可能没有延迟足够的时长就提前进入，所以必须防止这种提前进入导致的触发器的触发时间计算错误
+				if(Utility.Now() < token.Timestamp)
+					SpinWait.SpinUntil(() => DateTime.Now.Ticks >= token.Timestamp.Ticks);
+
 				//将最近触发时间点设为此时此刻
-				_lastTime = current.Timestamp;
+				_lastTime = token.Timestamp;
 
 				//注意：必须将待处理任务标记置空（否则会误导Scan方法重新进入Fire方法内的有效性判断）
 				_token = null;
@@ -504,9 +508,6 @@ namespace Zongsoft.Scheduling
 
 				//设置处理次数
 				int count = 0;
-
-				//获取当前的任务调度凭证
-				var token = (TaskToken)state;
 
 				//遍历待执行的调度项集合（该集合内部确保了线程安全）
 				foreach(var schedule in token.Schedules)
