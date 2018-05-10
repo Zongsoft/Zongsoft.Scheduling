@@ -495,7 +495,11 @@ namespace Zongsoft.Scheduling
 				//注意：防坑处理！！！
 				//任务线程可能没有延迟足够的时长就提前进入，所以必须防止这种提前进入导致的触发器的触发时间计算错误
 				if(Utility.Now() < token.Timestamp)
-					SpinWait.SpinUntil(() => DateTime.Now.Ticks >= token.Timestamp.Ticks);
+					SpinWait.SpinUntil(() => token.IsCancellationRequested || DateTime.Now.Ticks >= token.Timestamp.Ticks);
+
+				//如果任务已经被取消，则退出
+				if(token.IsCancellationRequested)
+					return;
 
 				//将最近触发时间点设为此时此刻
 				_lastTime = token.Timestamp;
