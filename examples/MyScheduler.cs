@@ -73,12 +73,18 @@ namespace Zongsoft.Scheduling.Examples
 
 				foreach(var plan in plans)
 				{
-					//如果任务计划不可用或没有指定定时表达式，则忽略该计划
-					if(!plan.Enabled || string.IsNullOrWhiteSpace(plan.CronExpression))
+					//如果任务计划不可用则忽略该计划
+					if(!plan.Enabled)
 						continue;
 
-					//将指定任务计划加入到调度器中
-					this.Schedule(this.GetHandler(plan.PlanId), Trigger.Cron(plan.CronExpression, plan.ExpirationTime, plan.EffectiveTime));
+					//根据当前计划的Cron表达式生成对应的触发器
+					var trigger = this.GetCronTrigger(plan.CronExpression,
+					                                  plan.EffectiveTime,
+					                                  plan.ExpirationTime);
+
+					//如果触发器生成成功，则将当前任务计划加入到调度器中
+					if(trigger != null)
+						this.Schedule(this.GetHandler(plan.PlanId), trigger);
 				}
 			});
 
@@ -123,6 +129,32 @@ namespace Zongsoft.Scheduling.Examples
 
 				yield return new Models.PlanModel((uint)(i + 1), null, cron);
 			};
+		}
+
+		private ITrigger GetCronTrigger(string expression, DateTime? effectiveTime, DateTime? expirationTime)
+		{
+			if(string.IsNullOrWhiteSpace(expression))
+				return null;
+
+			//如果生效时间小于当前则将其置空（以避免触发器的哈希值数量过多）
+			if(effectiveTime.HasValue && effectiveTime.Value < DateTime.Now)
+				effectiveTime = null;
+
+			//如果过期时间比当前时间还早，则忽略它
+			if(expirationTime.HasValue && expirationTime.Value < DateTime.Now)
+				return null;
+
+			try
+			{
+				//因为无效的Cron表达式可能会导致解析异常，所以需要捕获异常
+				return Trigger.Cron(expression, expirationTime, effectiveTime);
+			}
+			catch(Exception ex)
+			{
+				Zongsoft.Diagnostics.Logger.Error(ex);
+			}
+
+			return null;
 		}
 
 		private MyHandler GetHandler(uint key)
