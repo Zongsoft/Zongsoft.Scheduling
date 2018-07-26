@@ -43,6 +43,7 @@ namespace Zongsoft.Scheduling
 		#region 事件定义
 		public event EventHandler<HandledEventArgs> Failed;
 		public event EventHandler<HandledEventArgs> Succeed;
+		public event EventHandler<HandledEventArgs> Discarded;
 		#endregion
 
 		#region 成员字段
@@ -153,7 +154,12 @@ namespace Zongsoft.Scheduling
 
 					//如果延迟执行时间为空则表示已经过期（即再也不用重试了，弃之）
 					if(latency == null)
+					{
+						//激发“Discarded”事件
+						this.OnDiscarded(token.Handler, token.Context, token.Exception);
+
 						continue;
+					}
 
 					//如果延迟时间大于当前时间，则应跳过当前项
 					if(latency.Value > DateTime.Now)
@@ -252,6 +258,11 @@ namespace Zongsoft.Scheduling
 		protected virtual void OnSucceed(IHandler handler, IHandlerContext context)
 		{
 			this.Succeed?.Invoke(this, new HandledEventArgs(handler, context, null));
+		}
+
+		protected virtual void OnDiscarded(IHandler handler, IHandlerContext context, Exception exception)
+		{
+			this.Discarded?.Invoke(this, new HandledEventArgs(handler, context, exception));
 		}
 		#endregion
 

@@ -49,9 +49,12 @@ namespace Zongsoft.Scheduling
 		/// </remarks>
 		event EventHandler<HandledEventArgs> Handled;
 
-		/// <summary>表示一次处理执行完成的事件。</summary>
-		/// <remarks>即使一次处理执行中的所有处理器都调用失败，该事件也会发生。</remarks>
+		/// <summary>表示任务被触发执行完成的事件。</summary>
+		/// <remarks>即使任务处理执行中的所有处理器都调用失败，该事件也会发生。</remarks>
 		event EventHandler<OccurredEventArgs> Occurred;
+
+		/// <summary>表示任务被触发执行之前的事件。</summary>
+		event EventHandler<OccurringEventArgs> Occurring;
 
 		/// <summary>表示一个处理器调度完成的事件。</summary>
 		event EventHandler<ScheduledEventArgs> Scheduled;
@@ -146,7 +149,7 @@ namespace Zongsoft.Scheduling
 		/// </summary>
 		/// <param name="handler">指定要绑定的处理器。</param>
 		/// <param name="trigger">指定要调度的新触发器。</param>
-		void Reschedule(IHandler handler, ITrigger trigger);
+		bool Reschedule(IHandler handler, ITrigger trigger);
 
 		/// <summary>
 		/// 清空所有排程，即将调度器中的所有绑定关系解除。

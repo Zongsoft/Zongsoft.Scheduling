@@ -125,6 +125,10 @@ namespace Zongsoft.Scheduling.Examples
 						//工作日（周一至周五）的每小时来一发
 						cron = "0 0 * ? * 1-5";
 						break;
+					default:
+						//负数：每小时整点来一发
+						cron = "0 0 * * * ?";
+						break;
 				}
 
 				yield return new Models.PlanModel((uint)(i + 1), null, cron);

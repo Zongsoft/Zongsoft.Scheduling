@@ -48,6 +48,7 @@ namespace Zongsoft.Scheduling
 		#region 事件定义
 		public event EventHandler<HandledEventArgs> Handled;
 		public event EventHandler<OccurredEventArgs> Occurred;
+		public event EventHandler<OccurringEventArgs> Occurring;
 		public event EventHandler<ScheduledEventArgs> Scheduled;
 		#endregion
 
@@ -195,7 +196,7 @@ namespace Zongsoft.Scheduling
 			return false;
 		}
 
-		public void Reschedule(IHandler handler, ITrigger trigger)
+		public bool Reschedule(IHandler handler, ITrigger trigger)
 		{
 			if(handler == null)
 				throw new ArgumentNullException(nameof(handler));
@@ -206,10 +207,7 @@ namespace Zongsoft.Scheduling
 			if(_handlers.Add(handler))
 			{
 				//将该处理器加入到指定的触发器中的调度处理集
-				this.ScheduleCore(handler, trigger);
-
-				//执行完成
-				return;
+				return this.ScheduleCore(handler, trigger);
 			}
 
 			//定义找到的调度项变量（默认没有找到）
@@ -234,13 +232,20 @@ namespace Zongsoft.Scheduling
 				//将指定的执行处理器加入到找到的调度项的执行集合中，如果加入成功则尝试重新激发
 				//该新增方法确保同步完成，不会引发线程重入导致的状态不一致
 				if(found.Value.AddHandler(handler))
+				{
+					//尝试重新触发
 					this.Refire(found.Value);
+
+					//返回重新调度成功
+					return true;
+				}
+
+				//返回重新调度失败
+				return false;
 			}
-			else
-			{
-				//将该处理器加入到指定的触发器中的调度处理集
-				this.ScheduleCore(handler, trigger);
-			}
+
+			//将该处理器加入到指定的触发器中的调度处理集
+			return this.ScheduleCore(handler, trigger);
 		}
 
 		public void Unschedule()
@@ -407,6 +412,11 @@ namespace Zongsoft.Scheduling
 			this.Occurred?.Invoke(this, new OccurredEventArgs(scheduleId, count));
 		}
 
+		protected virtual void OnOccurring(string scheduleId)
+		{
+			this.Occurring?.Invoke(this, new OccurringEventArgs(scheduleId));
+		}
+
 		protected virtual void OnScheduled(string scheduleId, int count, ITrigger[] triggers)
 		{
 			this.Scheduled?.Invoke(this, new ScheduledEventArgs(scheduleId, count, triggers));
@@ -513,6 +523,9 @@ namespace Zongsoft.Scheduling
 				//设置处理次数
 				int count = 0;
 
+				//激发“Occurring”事件
+				this.OnOccurring(token.Identity);
+
 				//遍历待执行的调度项集合（该集合内部确保了线程安全）
 				foreach(var schedule in token.Schedules)
 				{
@@ -587,7 +600,7 @@ namespace Zongsoft.Scheduling
 		private class TaskToken : IDisposable
 		{
 			#region 公共字段
-			public string Identity;
+			public readonly string Identity;
 			public readonly DateTime Timestamp;
 			#endregion
 
@@ -664,9 +677,9 @@ namespace Zongsoft.Scheduling
 					}
 				}
 
-				//如果增加成功并且回调方法不为空，则以异步方式回调成功方法
+				//如果增加成功并且回调方法不为空，则回调成功方法
 				if(result && succeed != null)
-					succeed.BeginInvoke(this.Identity, count, triggers, null, null);
+					succeed(this.Identity, count, triggers);
 
 				return result;
 			}

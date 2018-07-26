@@ -61,12 +61,14 @@ namespace Zongsoft.Scheduling.Commands
 
 			scheduler.Handled += this.Scheduler_Handled;
 			scheduler.Occurred += this.Scheduler_Occurred;
+			scheduler.Occurring += this.Scheduler_Occurring;
 			scheduler.Scheduled += this.Scheduler_Scheduled;
 
 			if(scheduler.Retriever != null)
 			{
 				scheduler.Retriever.Failed += this.Retriever_Failed;
 				scheduler.Retriever.Succeed += this.Retriever_Succeed;
+				scheduler.Retriever.Discarded += this.Retriever_Discarded;
 			}
 
 			//调用基类同名方法（打印欢迎信息）
@@ -85,12 +87,14 @@ namespace Zongsoft.Scheduling.Commands
 
 			scheduler.Handled -= this.Scheduler_Handled;
 			scheduler.Occurred -= this.Scheduler_Occurred;
+			scheduler.Occurring -= this.Scheduler_Occurring;
 			scheduler.Scheduled -= this.Scheduler_Scheduled;
 
 			if(scheduler.Retriever != null)
 			{
 				scheduler.Retriever.Failed -= this.Retriever_Failed;
 				scheduler.Retriever.Succeed -= this.Retriever_Succeed;
+				scheduler.Retriever.Discarded -= this.Retriever_Discarded;
 			}
 		}
 		#endregion
@@ -118,6 +122,19 @@ namespace Zongsoft.Scheduling.Commands
 				.After(CommandOutletColor.DarkCyan, e.ScheduleId)
 				.After(CommandOutletColor.DarkGray, "): ")
 				.After(CommandOutletColor.Magenta, e.Count.ToString() + " ");
+
+			this.Context.Output.WriteLine(content.First);
+		}
+
+		private void Scheduler_Occurring(object sender, OccurringEventArgs e)
+		{
+			//获取调度器的基本信息内容（不需包含状态信息）
+			var content = SchedulerCommand.GetInfo((IScheduler)sender, false);
+
+			content.Prepend(Properties.Resources.Scheduler_Occurring_Name)
+				.After(CommandOutletColor.DarkGray, "(")
+				.After(CommandOutletColor.DarkCyan, e.ScheduleId)
+				.After(CommandOutletColor.DarkGray, ")");
 
 			this.Context.Output.WriteLine(content.First);
 		}
@@ -160,6 +177,15 @@ namespace Zongsoft.Scheduling.Commands
 		{
 			//获取重试成功的事件信息内容
 			var content = this.GetHandledContent(Properties.Resources.Retriever_Succeed_Name, e);
+
+			//输出事件信息内容
+			this.Context.Output.WriteLine(content);
+		}
+
+		private void Retriever_Discarded(object sender, HandledEventArgs e)
+		{
+			//获取重试丢弃的事件信息内容
+			var content = this.GetHandledContent(Properties.Resources.Retriever_Discarded_Name, e);
 
 			//输出事件信息内容
 			this.Context.Output.WriteLine(content);

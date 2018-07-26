@@ -61,6 +61,15 @@ namespace Zongsoft.Scheduling.Properties {
         }
         
         /// <summary>
+        ///   查找类似 重试丢弃 的本地化字符串。
+        /// </summary>
+        internal static string Retriever_Discarded_Name {
+            get {
+                return ResourceManager.GetString("Retriever.Discarded.Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 重试失败 的本地化字符串。
         /// </summary>
         internal static string Retriever_Failed_Name {
@@ -129,6 +138,15 @@ namespace Zongsoft.Scheduling.Properties {
         internal static string Scheduler_Occurred_Name {
             get {
                 return ResourceManager.GetString("Scheduler.Occurred.Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 触发开始 的本地化字符串。
+        /// </summary>
+        internal static string Scheduler_Occurring_Name {
+            get {
+                return ResourceManager.GetString("Scheduler.Occurring.Name", resourceCulture);
             }
         }
         

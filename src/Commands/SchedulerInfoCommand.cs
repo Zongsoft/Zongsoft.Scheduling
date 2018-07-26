@@ -38,7 +38,7 @@ using Zongsoft.Services;
 
 namespace Zongsoft.Scheduling.Commands
 {
-	[CommandOption(KEY_LIMIT_OPTION, typeof(int), 100, "${Text.SchedulerInfoCommand.Options.Limit}")]
+	[CommandOption(KEY_LIMIT_OPTION, typeof(int), 10, "${Text.SchedulerInfoCommand.Options.Limit}")]
 	public class SchedulerInfoCommand : Zongsoft.Services.Commands.WorkerInfoCommand
 	{
 		#region 常量定义
