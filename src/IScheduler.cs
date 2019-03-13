@@ -44,8 +44,8 @@ namespace Zongsoft.Scheduling
 		#region 事件声明
 		/// <summary>表示一个处理器执行完成的事件。</summary>
 		/// <remarks>
-		///		<para>可通过<seealso cref="HandledEventArgs.Exception"/>属性来确认最近一次处理是否成功。</para>
-		///		<para>可通过<seealso cref="IHandlerContext.Failure"/>属性来重试情况的信息。</para>
+		/// 	<para>可通过<seealso cref="HandledEventArgs.Exception"/>属性来确认最近一次处理是否成功。</para>
+		/// 	<para>可通过<seealso cref="IHandlerContext.Failure"/>属性来获取重试情况的信息。</para>
 		/// </remarks>
 		event EventHandler<HandledEventArgs> Handled;
 
