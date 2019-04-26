@@ -164,7 +164,14 @@ namespace Zongsoft.Scheduling
 				if(string.IsNullOrWhiteSpace(expression))
 					throw new ArgumentNullException(nameof(expression));
 
-				return new CronTrigger(expression, expiration, effective);
+				try
+				{
+					return new CronTrigger(expression, expiration, effective);
+				}
+				catch(Exception ex)
+				{
+					throw new ArgumentException($"The specified '{expression}' is an illegal Cron expression.", ex);
+				}
 			}
 		}
 		#endregion
