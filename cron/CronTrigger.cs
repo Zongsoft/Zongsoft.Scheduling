@@ -49,7 +49,14 @@ namespace Zongsoft.Scheduling
 		#region 私有构造
 		private CronTrigger(string expression, DateTime? expiration = null, DateTime? effective = null)
 		{
-			_expression = Cronos.CronExpression.Parse(expression, Cronos.CronFormat.IncludeSeconds);
+			try
+			{
+				_expression = Cronos.CronExpression.Parse(expression, Cronos.CronFormat.IncludeSeconds);
+			}
+			catch(Exception ex)
+			{
+				throw new ArgumentException($"The specified '{expression}' is an illegal Cron expression.", ex);
+			}
 
 			this.Expression = _expression.ToString();
 			this.ExpirationTime = expiration;
@@ -140,9 +147,9 @@ namespace Zongsoft.Scheduling
 		public override string ToString()
 		{
 			if(this.EffectiveTime == null && this.ExpirationTime == null)
-				return "Cron: " + _expression.ToString();
+				return "Cron: " + this.Expression;
 			else
-				return "Cron: " + _expression.ToString() + " (" +
+				return "Cron: " + this.Expression + " (" +
 					(this.EffectiveTime.HasValue ? this.EffectiveTime.ToString() : "?") + " ~ " +
 					(this.ExpirationTime.HasValue ? this.ExpirationTime.ToString() : "?") + ")";
 		}
@@ -164,14 +171,7 @@ namespace Zongsoft.Scheduling
 				if(string.IsNullOrWhiteSpace(expression))
 					throw new ArgumentNullException(nameof(expression));
 
-				try
-				{
-					return new CronTrigger(expression, expiration, effective);
-				}
-				catch(Exception ex)
-				{
-					throw new ArgumentException($"The specified '{expression}' is an illegal Cron expression.", ex);
-				}
+				return new CronTrigger(expression, expiration, effective);
 			}
 		}
 		#endregion
