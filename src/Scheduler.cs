@@ -613,7 +613,7 @@ namespace Zongsoft.Scheduling
 			public TaskToken(DateTime timestamp, IEnumerable<ScheduleToken> schedules)
 			{
 				this.Timestamp = timestamp;
-				this.Identity = Common.RandomGenerator.GenerateString();
+				this.Identity = Common.Randomizer.GenerateString();
 				_schedules = new HashSet<ScheduleToken>(schedules);
 				_cancellation = new CancellationTokenSource();
 			}
