@@ -53,7 +53,7 @@ namespace Zongsoft.Scheduling.Examples
 		public void Handle(IHandlerContext context)
 		{
 			//生成一个随机数
-			var random = Math.Abs(Zongsoft.Common.RandomGenerator.GenerateInt32());
+			var random = Math.Abs(Zongsoft.Common.Randomizer.GenerateInt32());
 
 			//随机模拟业务处理发生异常
 			if(random % 11 == 0 || random % 97 == 0 || random % 101 == 0)

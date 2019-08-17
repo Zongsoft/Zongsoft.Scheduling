@@ -99,7 +99,7 @@ namespace Zongsoft.Scheduling.Examples
 
 			for(int i = 0; i < count; i++)
 			{
-				switch(Common.RandomGenerator.GenerateInt32() % 6)
+				switch(Common.Randomizer.GenerateInt32() % 6)
 				{
 					case 0:
 						//每分钟来一发
